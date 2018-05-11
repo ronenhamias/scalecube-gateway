@@ -66,7 +66,9 @@
     <mockito.version>1.9.5</mockito.version>
     <hamcrest-all.version>1.3</hamcrest-all.version>
     <reactor-netty.version>0.7.7.RELEASE</reactor-netty.version>
-    <scalecube-services.version>2.0.1-SNAPSHOT</scalecube-services.version>
+    <reactor-core.version>3.1.7.RELEASE</reactor-core.version>
+    <reactivestreams.version>1.0.2</reactivestreams.version>
+    <scalecube-services.version>2.0.10-SNAPSHOT</scalecube-services.version>
 
     <skipStressTests>true</skipStressTests>
   </properties>
@@ -74,8 +76,9 @@
   <modules>
     <module>Http</module>
     <module>Websocket</module>
-    <module>Examples</module>
     <module>TestLib</module>
+    <module>Examples</module>
+    <module>Core</module>
   </modules>
 
   <dependencyManagement>
@@ -92,6 +95,20 @@
         <groupId>io.projectreactor.ipc</groupId>
         <artifactId>reactor-netty</artifactId>
         <version>${reactor-netty.version}</version>
+      </dependency>
+
+      <!-- Reactor Core -->
+      <dependency>
+        <groupId>io.projectreactor</groupId>
+        <artifactId>reactor-core</artifactId>
+        <version>${reactor-core.version}</version>
+      </dependency>
+
+      <!-- Reactive Streams -->
+      <dependency>
+        <groupId>org.reactivestreams</groupId>
+        <artifactId>reactive-streams</artifactId>
+        <version>${reactivestreams.version}</version>
       </dependency>
 
       <!-- Scalecube Services -->
