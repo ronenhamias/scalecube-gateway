@@ -8,8 +8,13 @@ import reactor.core.publisher.Mono;
 
 @Service("greeting")
 public interface GreetingService {
-  @ServiceMethod("hello")
+
+  @ServiceMethod("one")
   Mono<String> hello(String name);
+
+
+  @ServiceMethod("many")
+  Flux<String> many(String name);
 
   @ServiceMethod("helloStream")
   Flux<String> helloStream(Flux<String> name);
