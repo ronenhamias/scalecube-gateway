@@ -1,257 +1,269 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+  <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.scalecube</groupId>
-    <artifactId>scalecube-gateway-parent</artifactId>
-    <version>2.0.1-SNAPSHOT</version>
-    <packaging>pom</packaging>
+  <groupId>io.scalecube</groupId>
+  <artifactId>scalecube-gateway-parent</artifactId>
+  <version>2.0.1-SNAPSHOT</version>
+  <packaging>pom</packaging>
 
-    <name>ScaleCube</name>
-    <description>
-        ScaleCube is a lightweight decentralized cluster membership, failure detection, messaging and
-        gossip protocol library for the Java VM.
-    </description>
-    <inceptionYear>2015</inceptionYear>
-    <url>http://scalecube.io</url>
+  <name>ScaleCube</name>
+  <description>
+    ScaleCube is a lightweight decentralized cluster membership, failure detection, messaging and
+    gossip protocol library for the Java VM.
+  </description>
+  <inceptionYear>2015</inceptionYear>
+  <url>http://scalecube.io</url>
 
-    <licenses>
-        <license>
-            <name>The Apache License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-        </license>
-    </licenses>
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
 
-    <prerequisites>
-        <maven>3.0.3</maven>
-    </prerequisites>
+  <prerequisites>
+    <maven>3.0.3</maven>
+  </prerequisites>
 
-    <scm>
-        <url>https://github.com/scalecube/scalecube</url>
-        <connection>scm:git:git@github.com:scalecube/scalecube-gateway.git</connection>
-        <developerConnection>scm:git:git@github.com:scalecube/scalecube-gateway.git</developerConnection>
-        <tag>HEAD</tag>
-    </scm>
+  <scm>
+    <url>https://github.com/scalecube/scalecube</url>
+    <connection>scm:git:git@github.com:scalecube/scalecube-gateway.git</connection>
+    <developerConnection>scm:git:git@github.com:scalecube/scalecube-gateway.git</developerConnection>
+    <tag>HEAD</tag>
+  </scm>
 
-    <developers>
-        <developer>
-            <id>scalecube.io</id>
-            <name>The ScaleCube Project Contributors</name>
-            <email>info@scalecube.io</email>
-            <organization>The ScaleCube Project</organization>
-            <organizationUrl>http://scalecube.io/</organizationUrl>
-        </developer>
-    </developers>
+  <developers>
+    <developer>
+      <id>scalecube.io</id>
+      <name>The ScaleCube Project Contributors</name>
+      <email>info@scalecube.io</email>
+      <organization>The ScaleCube Project</organization>
+      <organizationUrl>http://scalecube.io/</organizationUrl>
+    </developer>
+  </developers>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-    </distributionManagement>
+  <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
 
-    <properties>
-        <argLine>-Xms1024m -Xmx2048m</argLine>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+  <properties>
+    <argLine>-Xms1024m -Xmx2048m</argLine>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <slf4j.version>1.7.7</slf4j.version>
-        <reactor-netty.version>0.7.7.RELEASE</reactor-netty.version>
-        <reactor-core.version>3.1.7.RELEASE</reactor-core.version>
-        <reactivestreams.version>1.0.2</reactivestreams.version>
-        <scalecube-services.version>2.0.14</scalecube-services.version>
-        <skipStressTests>true</skipStressTests>
-    </properties>
+    <slf4j.version>1.7.7</slf4j.version>
+    <reactor-netty.version>0.7.7.RELEASE</reactor-netty.version>
+    <reactor-core.version>3.1.7.RELEASE</reactor-core.version>
+    <reactivestreams.version>1.0.2</reactivestreams.version>
+    <scalecube-services.version>2.0.14</scalecube-services.version>
+    <skipStressTests>true</skipStressTests>
+  </properties>
 
-    <modules>
-        <module>Http</module>
-        <module>Websocket</module>
-        <module>TestLib</module>
-        <module>Examples</module>
-        <module>Core</module>
-    </modules>
+  <modules>
+    <module>Http</module>
+    <module>Websocket</module>
+    <module>TestLib</module>
+    <module>Examples</module>
+    <module>Core</module>
+  </modules>
 
-    <dependencyManagement>
-        <dependencies>
-            <!-- Slf4j -->
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>${slf4j.version}</version>
-            </dependency>
+  <dependencyManagement>
+    <dependencies>
+      <!-- Slf4j -->
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>${slf4j.version}</version>
+      </dependency>
 
-            <!-- Reactor Netty -->
-            <dependency>
-                <groupId>io.projectreactor.ipc</groupId>
-                <artifactId>reactor-netty</artifactId>
-                <version>${reactor-netty.version}</version>
-            </dependency>
+      <!-- Reactor Netty -->
+      <dependency>
+        <groupId>io.projectreactor.ipc</groupId>
+        <artifactId>reactor-netty</artifactId>
+        <version>${reactor-netty.version}</version>
+      </dependency>
 
-            <!-- Reactor Core -->
-            <dependency>
-                <groupId>io.projectreactor</groupId>
-                <artifactId>reactor-core</artifactId>
-                <version>${reactor-core.version}</version>
-            </dependency>
+      <!-- Reactor Core -->
+      <dependency>
+        <groupId>io.projectreactor</groupId>
+        <artifactId>reactor-core</artifactId>
+        <version>${reactor-core.version}</version>
+      </dependency>
 
-            <!-- Reactive Streams -->
-            <dependency>
-                <groupId>org.reactivestreams</groupId>
-                <artifactId>reactive-streams</artifactId>
-                <version>${reactivestreams.version}</version>
-            </dependency>
+      <!-- Reactive Streams -->
+      <dependency>
+        <groupId>org.reactivestreams</groupId>
+        <artifactId>reactive-streams</artifactId>
+        <version>${reactivestreams.version}</version>
+      </dependency>
 
-            <!-- Scalecube Services -->
-            <dependency>
-                <groupId>io.scalecube</groupId>
-                <artifactId>scalecube-services</artifactId>
-                <version>${scalecube-services.version}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+      <!-- Scalecube Services -->
+      <dependency>
+        <groupId>io.scalecube</groupId>
+        <artifactId>scalecube-services</artifactId>
+        <version>${scalecube-services.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
-    <build>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>2.5</version>
+        <configuration>
+          <autoVersionSubmodules>true</autoVersionSubmodules>
+          <useReleaseProfile>false</useReleaseProfile>
+          <releaseProfiles>release</releaseProfiles>
+          <tagNameFormat>v@{project.version}</tagNameFormat>
+          <goals>deploy</goals>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.sonatype.plugins</groupId>
+        <artifactId>nexus-staging-maven-plugin</artifactId>
+        <version>1.6.7</version>
+        <extensions>true</extensions>
+        <configuration>
+          <serverId>ossrh</serverId>
+          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+          <autoReleaseAfterClose>true</autoReleaseAfterClose>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.3</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+          <compilerArgs>
+            <arg>-proc:none</arg>
+            <arg>-Xlint:unchecked</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.18.1</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>2.17</version>
+        <executions>
+          <execution>
+            <id>checkstyle</id>
+            <phase>verify</phase>
+            <configuration>
+              <configLocation>checkstyle.xml</configLocation>
+              <encoding>UTF-8</encoding>
+              <consoleOutput>true</consoleOutput>
+              <violationSeverity>warning</violationSeverity>
+              <failsOnError>true</failsOnError>
+              <maxAllowedViolations>0</maxAllowedViolations>
+              <suppressionsLocation>checkstyle-suppression.xml</suppressionsLocation>
+              <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
+            </configuration>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.7.7.201606060606</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-release-plugin</artifactId>
-                <version>2.5</version>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>${maven-gpg-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>${maven-source-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <phase>post-integration-test</phase>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>${maven-javadoc-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <phase>post-integration-test</phase>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
                 <configuration>
-                    <autoVersionSubmodules>true</autoVersionSubmodules>
-                    <useReleaseProfile>false</useReleaseProfile>
-                    <releaseProfiles>release</releaseProfiles>
-                    <tagNameFormat>v@{project.version}</tagNameFormat>
-                    <goals>deploy</goals>
+                  <additionalparam>-Xdoclint:none</additionalparam>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.7</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <serverId>ossrh</serverId>
-                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.3</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                    <compilerArgs>
-                        <arg>-proc:none</arg>
-                        <arg>-Xlint:unchecked</arg>
-                    </compilerArgs>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.18.1</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>2.17</version>
-                <executions>
-                    <execution>
-                        <id>checkstyle</id>
-                        <phase>verify</phase>
-                        <configuration>
-                            <configLocation>checkstyle.xml</configLocation>
-                            <encoding>UTF-8</encoding>
-                            <consoleOutput>true</consoleOutput>
-                            <violationSeverity>warning</violationSeverity>
-                            <failsOnError>true</failsOnError>
-                            <maxAllowedViolations>0</maxAllowedViolations>
-                            <suppressionsLocation>checkstyle-suppression.xml</suppressionsLocation>
-                            <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
-                        </configuration>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.7.7.201606060606</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>report</id>
-                        <phase>test</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+              </execution>
+            </executions>
+          </plugin>
         </plugins>
-    </build>
-
-
-    <profiles>
-        <profile>
-            <id>release</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.6</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <keyname>${env.GPG_KEY}</keyname>
-                            <passphraseServerId>${env.GPG_KEY}</passphraseServerId>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                        <version>3.0.1</version>
-                        <executions>
-                            <execution>
-                                <id>attach-sources</id>
-                                <phase>post-integration-test</phase>
-                                <goals>
-                                    <goal>jar-no-fork</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>stresstests</id>
-            <properties>
-                <skipStressTests>false</skipStressTests>
-            </properties>
-        </profile>
-    </profiles>
+      </build>
+    </profile>
+    <profile>
+      <id>stresstests</id>
+      <properties>
+        <skipStressTests>false</skipStressTests>
+      </properties>
+    </profile>
+  </profiles>
 
 </project>
