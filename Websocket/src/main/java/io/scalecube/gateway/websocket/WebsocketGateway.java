@@ -10,6 +10,9 @@ import reactor.core.publisher.Mono;
 
 import java.net.InetSocketAddress;
 
+/**
+ * Websocket gateway server wrapper.
+ */
 public class WebsocketGateway {
 
   private WebSocketServer webSocketServer;
@@ -46,6 +49,11 @@ public class WebsocketGateway {
       return this;
     }
 
+    /**
+     * Build an instance.
+     *
+     * @return WebsocketGateway instance
+     */
     public WebsocketGateway build() {
       acceptor = new WebSocketAcceptor() {
         @Override
