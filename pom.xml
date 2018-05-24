@@ -60,7 +60,6 @@
     <argLine>-Xms1024m -Xmx2048m</argLine>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-
     <slf4j.version>1.7.7</slf4j.version>
     <reactor-netty.version>0.7.7.RELEASE</reactor-netty.version>
     <reactor-core.version>3.1.7.RELEASE</reactor-core.version>
@@ -71,7 +70,6 @@
     <maven-gpg-plugin.version>1.6</maven-gpg-plugin.version>
     <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
     <maven-javadoc-plugin.version>2.10.4</maven-javadoc-plugin.version>
-
   </properties>
 
   <modules>
