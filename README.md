@@ -1,1 +1,1 @@
-# scalecube-gateway
+# Scalecube-gateway
