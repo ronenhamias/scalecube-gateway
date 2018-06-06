@@ -12,7 +12,7 @@
     <Loggers>
         <Logger name="io.netty.util.internal" level="error"/>
 
-        <Root level="error">
+        <Root level="info">
             <AppenderRef ref="console"/>
         </Root>
     </Loggers>

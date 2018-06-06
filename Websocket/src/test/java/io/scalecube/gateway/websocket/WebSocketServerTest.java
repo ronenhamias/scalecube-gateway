@@ -1,8 +1,20 @@
 package io.scalecube.gateway.websocket;
 
-import reactor.core.publisher.Mono;
+import static io.scalecube.gateway.websocket.GreetingService.GREETING_FAILING_MANY;
+import static io.scalecube.gateway.websocket.GreetingService.GREETING_FAILING_ONE;
+import static io.scalecube.gateway.websocket.GreetingService.GREETING_MANY;
+import static io.scalecube.gateway.websocket.GreetingService.GREETING_ONE;
+import static io.scalecube.gateway.websocket.GreetingService.GREETING_POJO_MANY;
+import static io.scalecube.gateway.websocket.GreetingService.GREETING_POJO_ONE;
+import static org.junit.Assert.assertEquals;
 
-import org.junit.Assert;
+import io.scalecube.services.api.ErrorData;
+import io.scalecube.services.api.Qualifier;
+import io.scalecube.services.api.ServiceMessage;
+
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -13,50 +25,173 @@ import java.util.stream.IntStream;
 
 public class WebSocketServerTest {
 
-  public static final Duration TIMEOUT = Duration.ofSeconds(5);
-  public static final int COUNT = 10;
+  private static final Duration TIMEOUT = Duration.ofSeconds(3);
 
   @Rule
   public WebSocketResource resource = new WebSocketResource();
 
   @Test
-  public void testEcho() {
-    resource.newServer(
-        session -> session.send(session.receive()).then(),
-        session -> Mono.empty());
+  public void testGreetingOne() {
+    resource.startServer().startServices();
 
-    List<Echo> req = IntStream.range(0, COUNT).boxed().map(Integer::toHexString)
-        .map(Echo::new).collect(Collectors.toList());
+    String expectedData = "Echo:hello";
 
-    List<Echo> responses = resource.newClientSession("/", req, Echo.class)
-        .collectList()
-        .block(TIMEOUT);
-
-    Assert.assertEquals(COUNT, responses.size());
+    StepVerifier.create(resource.sendThenReceive(Mono.just(GREETING_ONE), String.class, TIMEOUT))
+        .assertNext(msg -> assertEquals(expectedData, msg.data()))
+        .expectComplete()
+        .verify(TIMEOUT);
   }
 
-  public static class Echo {
-    private String text;
+  @Test
+  public void testGreetingFailingOne() {
+    resource.startServer().startServices();
 
-    public Echo() {}
+    ServiceMessage expected = errorServiceMessage(500, "hello");
 
-    public Echo(String text) {
-      this.text = text;
-    }
+    StepVerifier.create(resource.sendThenReceive(Mono.just(GREETING_FAILING_ONE), ErrorData.class, TIMEOUT))
+        .assertNext(message -> {
+          assertEquals(expected.qualifier(), message.qualifier());
+          ErrorData actualData = message.data();
+          ErrorData expectedData = expected.data();
+          assertEquals(expectedData.getErrorCode(), actualData.getErrorCode());
+          assertEquals(expectedData.getErrorMessage(), actualData.getErrorMessage());
+        })
+        .expectComplete()
+        .verify(TIMEOUT);
+  }
 
-    public String getText() {
-      return text;
-    }
+  @Test
+  public void testGreetingMany() {
+    resource.startServer().startServices();
 
-    public void setText(String text) {
-      this.text = text;
-    }
+    int n = 10;
+    List<String> expected = IntStream.range(0, n)
+        .mapToObj(i -> "Greeting (" + i + ") to: hello")
+        .collect(Collectors.toList());
 
-    @Override
-    public String toString() {
-      return "Echo{" +
-          "text='" + text + '\'' +
-          '}';
-    }
+    List<String> actual = resource.sendThenReceive(Mono.just(GREETING_MANY), String.class, TIMEOUT)
+        .take(n)
+        .map(ServiceMessage::data)
+        .cast(String.class)
+        .collectList().block(TIMEOUT);
+
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testGreetingFailingMany() {
+    resource.startServer().startServices();
+
+    String content = "Echo:hello";
+    ServiceMessage expected = errorServiceMessage(500, content);
+
+    StepVerifier.create(resource.sendThenReceive(Mono.just(GREETING_FAILING_MANY), ErrorData.class, TIMEOUT))
+        .assertNext(msg -> assertEquals(content, msg.data()))
+        .assertNext(msg -> assertEquals(content, msg.data()))
+        .assertNext(msg -> {
+          assertEquals(expected.qualifier(), msg.qualifier());
+          ErrorData actualData = msg.data();
+          ErrorData expectedData = expected.data();
+          assertEquals(expectedData.getErrorCode(), actualData.getErrorCode());
+          assertEquals(expectedData.getErrorMessage(), actualData.getErrorMessage());
+        })
+        .expectComplete()
+        .verify(TIMEOUT);
+  }
+
+  @Test
+  public void testServicesNotStartedYet() {
+    resource.startServer();
+
+    ServiceMessage expected = unreachableServiceMessage(GREETING_ONE.qualifier());
+
+    StepVerifier.create(resource.sendThenReceive(Mono.just(GREETING_ONE), ErrorData.class, TIMEOUT))
+        .assertNext(msg -> {
+          assertEquals(expected.qualifier(), msg.qualifier());
+          ErrorData actualData = msg.data();
+          ErrorData expectedData = expected.data();
+          assertEquals(expectedData.getErrorCode(), actualData.getErrorCode());
+          assertEquals(expectedData.getErrorMessage(), actualData.getErrorMessage());
+        })
+        .expectComplete()
+        .verify(TIMEOUT);
+  }
+
+  @Test
+  public void testServicesRestarted() {
+    resource.startServer();
+
+    ServiceMessage unreachableServiceMessage = unreachableServiceMessage(GREETING_ONE.qualifier());
+
+    StepVerifier.create(resource.sendThenReceive(Mono.just(GREETING_ONE), ErrorData.class, TIMEOUT))
+        .assertNext(msg -> {
+          assertEquals(unreachableServiceMessage.qualifier(), msg.qualifier());
+          ErrorData actualData = msg.data();
+          ErrorData expectedData = unreachableServiceMessage.data();
+          assertEquals(expectedData.getErrorCode(), actualData.getErrorCode());
+          assertEquals(expectedData.getErrorMessage(), actualData.getErrorMessage());
+        })
+        .expectComplete()
+        .verify(TIMEOUT);
+
+    // start services node
+    resource.startServices();
+
+    String expectedData = "Echo:hello";
+
+    StepVerifier.create(resource.sendThenReceive(Mono.just(GREETING_ONE), String.class, TIMEOUT))
+        .assertNext(msg -> assertEquals(expectedData, msg.data()))
+        .expectComplete()
+        .verify(TIMEOUT);
+  }
+
+  @Test
+  public void testGreetingPojoOne() {
+    resource.startServer().startServices();
+
+    String expectedQualifier = GREETING_POJO_ONE.qualifier();
+    GreetingResponse expectedData = new GreetingResponse("Echo:hello");
+
+    StepVerifier.create(resource.sendThenReceive(Mono.just(GREETING_POJO_ONE), GreetingResponse.class, TIMEOUT))
+        .assertNext(msg -> {
+          assertEquals(expectedQualifier, msg.qualifier());
+          GreetingResponse actualData = msg.data();
+          assertEquals(expectedData.getText(), actualData.getText());
+        })
+        .expectComplete()
+        .verify(TIMEOUT);
+  }
+
+  @Test
+  public void testGreetingPojoMany() {
+    resource.startServer().startServices();
+
+    int n = 10;
+    List<GreetingResponse> expected = IntStream.range(0, n)
+        .mapToObj(i -> "Greeting (" + i + ") to: hello")
+        .map(GreetingResponse::new)
+        .collect(Collectors.toList());
+
+    List<GreetingResponse> actual =
+        resource.sendThenReceive(Mono.just(GREETING_POJO_MANY), GreetingResponse.class, TIMEOUT)
+            .take(n)
+            .map(ServiceMessage::data)
+            .cast(GreetingResponse.class)
+            .collectList().block(TIMEOUT);
+
+    assertEquals(expected, actual);
+  }
+
+  private ServiceMessage unreachableServiceMessage(String qualifier) {
+    int errorCode = 503;
+    String errorMessage = "No reachable member with such service: " + qualifier;
+    return errorServiceMessage(errorCode, errorMessage);
+  }
+
+  private ServiceMessage errorServiceMessage(int errorCode, String errorMessage) {
+    return ServiceMessage.builder()
+        .qualifier(Qualifier.asError(errorCode))
+        .data(new ErrorData(errorCode, errorMessage))
+        .build();
   }
 }
