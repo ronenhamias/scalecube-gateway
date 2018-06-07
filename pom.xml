@@ -70,6 +70,7 @@
     <maven-gpg-plugin.version>1.6</maven-gpg-plugin.version>
     <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
     <maven-javadoc-plugin.version>2.10.4</maven-javadoc-plugin.version>
+    <maven-shade-plugin.version>3.1.0</maven-shade-plugin.version>
   </properties>
 
   <modules>
@@ -77,8 +78,9 @@
     <module>Websocket</module>
     <module>TestLib</module>
     <module>Examples</module>
-    <module>Gateway-Runner</module>
-    <module>Examples-Runner</module>
+    <module>ExamplesRunner</module>
+    <module>Config</module>
+    <module>WebsocketRunner</module>
   </modules>
 
   <dependencyManagement>
@@ -117,6 +119,8 @@
         <artifactId>scalecube-services</artifactId>
         <version>${scalecube-services.version}</version>
       </dependency>
+
+      <!-- Scalecube Config -->
       <dependency>
         <groupId>io.scalecube</groupId>
         <artifactId>config</artifactId>
@@ -254,29 +258,27 @@
           </executions>
         </plugin>
         <plugin>
-          <artifactId>maven-jar-plugin</artifactId>
-          <configuration>
-            <archive>
-              <manifest>
-                <addClasspath>true</addClasspath>
-                <classpathPrefix>lib/</classpathPrefix>
-                <mainClass>${mainClass}</mainClass>
-              </manifest>
-            </archive>
-          </configuration>
-        </plugin>
-        <plugin>
-          <artifactId>maven-dependency-plugin</artifactId>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-shade-plugin</artifactId>
+          <version>${maven-shade-plugin.version}</version>
           <executions>
             <execution>
-              <phase>initialize</phase>
+              <id>default</id>
+              <phase>package</phase>
               <goals>
-                <goal>copy-dependencies</goal>
+                <goal>shade</goal>
               </goals>
               <configuration>
-                <overWriteReleases>false</overWriteReleases>
-                <includeScope>runtime</includeScope>
-                <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                <transformers>
+                  <transformer
+                      implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                    <mainClass>${mainClass}</mainClass>
+                  </transformer>
+                  <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                </transformers>
+                <outputDirectory>${project.build.directory}</outputDirectory>
+                <createDependencyReducedPom>false</createDependencyReducedPom>
+                <shadedArtifactAttached>true</shadedArtifactAttached>
               </configuration>
             </execution>
           </executions>
