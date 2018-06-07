@@ -1,4 +1,4 @@
-package io.scalecube.gateway.websocket;
+package io.scalecube.gateway.examples;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -10,6 +10,15 @@ public class GreetingServiceImpl implements GreetingService {
   @Override
   public Mono<String> one(String name) {
     return Mono.just("Echo:" + name);
+  }
+
+  @Override
+  public Flux<String> manyStream(EchoRequest name) {
+    return Flux.interval(Duration.ofMillis(name.getFrequencyMillis())).map(i -> {
+      String resp = name.getName() + ":" + i;
+      System.out.println(">> " + resp);
+      return resp;
+    });
   }
 
   @Override
@@ -41,5 +50,4 @@ public class GreetingServiceImpl implements GreetingService {
   public Flux<GreetingResponse> pojoMany(GreetingRequest request) {
     return many(request.getText()).map(GreetingResponse::new);
   }
-
 }

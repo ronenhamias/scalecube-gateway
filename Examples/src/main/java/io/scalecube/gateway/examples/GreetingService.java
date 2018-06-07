@@ -1,4 +1,4 @@
-package io.scalecube.gateway.websocket;
+package io.scalecube.gateway.examples;
 
 import io.scalecube.services.annotations.Service;
 import io.scalecube.services.annotations.ServiceMethod;
@@ -29,6 +29,9 @@ public interface GreetingService {
   @ServiceMethod("many")
   Flux<String> many(String name);
 
+  @ServiceMethod("manyStream")
+  Flux<String> manyStream(EchoRequest name);
+
   @ServiceMethod("failing/one")
   Mono<String> failingOne(String name);
 
@@ -40,5 +43,4 @@ public interface GreetingService {
 
   @ServiceMethod("pojo/many")
   Flux<GreetingResponse> pojoMany(GreetingRequest request);
-
 }
