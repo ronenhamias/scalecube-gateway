@@ -2,7 +2,7 @@ package io.scalecube.gateway.websocket;
 
 public class WebsocketGatewayConfig {
 
-  private int websocketPort = 8080;
+  private int websocketPort = 9090;
   private String seedAddress = "localhost:4801";
 
   public WebsocketGatewayConfig() {}
