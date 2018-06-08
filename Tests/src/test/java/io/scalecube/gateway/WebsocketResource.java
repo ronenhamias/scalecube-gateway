@@ -1,9 +1,8 @@
-package io.scalecube.gateway.websocket;
+package io.scalecube.gateway;
 
-import io.scalecube.gateway.examples.GreetingServiceImpl;
+import io.scalecube.gateway.websocket.WebSocketServer;
 import io.scalecube.services.Microservices;
 import io.scalecube.services.api.ServiceMessage;
-import io.scalecube.transport.Address;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -16,29 +15,30 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
 
 import org.junit.rules.ExternalResource;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.buffer.NettyDataBuffer;
 import org.springframework.core.io.buffer.NettyDataBufferFactory;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.ByteArrayOutputStream;
-import java.io.Closeable;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.Map;
 
-public class WebSocketResource extends ExternalResource implements Closeable {
+public class WebsocketResource extends ExternalResource {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketResource.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(WebsocketResource.class);
 
   private static final NettyDataBufferFactory BUFFER_FACTORY =
       new NettyDataBufferFactory(ByteBufAllocator.DEFAULT);
@@ -48,49 +48,69 @@ public class WebSocketResource extends ExternalResource implements Closeable {
     objectMapper = initMapper();
   }
 
-  private Microservices gateway;
-  private WebSocketServer server;
-  private InetSocketAddress serverAddress;
-  private Address gatewayAddress;
-  private Microservices services;
+  private WebSocketServer websocketServer;
+  private InetSocketAddress websocketServerAddress;
+  private URI websocketServerUri;
 
-  public InetSocketAddress serverAddress() {
-    return serverAddress;
+  public WebSocketServer getWebsocketServer() {
+    return websocketServer;
   }
 
-  public Address gatewayAddress() {
-    return gatewayAddress;
+  public InetSocketAddress getWebsocketServerAddress() {
+    return websocketServerAddress;
   }
 
-  public WebSocketResource startServer() {
-    gateway = Microservices.builder().build().startAwait();
-    gatewayAddress = gateway.cluster().address();
-    server = new WebSocketServer(gateway);
-    serverAddress = server.start();
+  public URI getWebsocketServerUri() {
+    return websocketServerUri;
+  }
+
+  public WebsocketResource startWebSocketServer(Microservices gateway) {
+    websocketServer = new WebSocketServer(gateway);
+    websocketServerAddress = websocketServer.start();
+
+    String hostAddress = websocketServerAddress.getAddress().getHostAddress();
+    int port = websocketServerAddress.getPort();
+    websocketServerUri = UriComponentsBuilder.newInstance()
+        .scheme("ws")
+        .host(hostAddress)
+        .port(port)
+        .build().toUri();
+
     return this;
   }
 
-  public WebSocketResource startServices() {
-    services = Microservices.builder()
-        .seeds(gatewayAddress)
-        .services(new GreetingServiceImpl())
-        .build().startAwait();
+  public WebsocketResource stopWebSocketServer() {
+    if (websocketServer != null) {
+      try {
+        websocketServer.stop();
+      } catch (Throwable ignore) {
+      }
+      LOGGER.info("Stopped websocket server {} on {}", websocketServer, websocketServerAddress);
+    }
     return this;
   }
 
-  public Flux<ServiceMessage> sendThenReceive(Publisher<ServiceMessage> requests, Class<?> dataClass,
+  public Flux<ServiceMessage> sendMessages(Publisher<ServiceMessage> messages, Class<?> dataClass, Duration timeout) {
+    return sendPayloads(Flux.from(messages).map(this::encode), dataClass, timeout);
+  }
+
+  public Flux<ServiceMessage> sendPayloads(Publisher<String> messages, Class<?> dataClass, Duration timeout) {
+    return sendWebsocketMessages(Flux.from(messages).map(str -> {
+      ByteBuf byteBuf = Unpooled.copiedBuffer(str, Charset.defaultCharset());
+      return new WebSocketMessage(WebSocketMessage.Type.BINARY, BUFFER_FACTORY.wrap(byteBuf));
+    }), dataClass, timeout);
+  }
+
+  public Flux<ServiceMessage> sendWebsocketMessages(Publisher<WebSocketMessage> messages,
+      Class<?> dataClass,
       Duration timeout) {
-    String hostAddress = serverAddress.getAddress().getHostAddress();
-    int port = serverAddress.getPort();
-    URI uri = UriComponentsBuilder.newInstance().scheme("ws").host(hostAddress).port(port).build().toUri();
-
     ReactorNettyWebSocketClient client = new ReactorNettyWebSocketClient();
-    LOGGER.info("Created websocket client: {} for uri: {}", client, uri);
+    LOGGER.info("Created websocket client: {} for uri: {}", client, websocketServerUri);
 
     return Flux.create((FluxSink<ServiceMessage> emitter) -> client
-        .execute(uri, session -> {
-          LOGGER.info("{} started sending messages to: {}", client, uri);
-          return session.send(Flux.from(requests).map(this::encode))
+        .execute(websocketServerUri, session -> {
+          LOGGER.info("{} started sending messages to: {}", client, websocketServerUri);
+          return session.send(messages)
               .thenMany(
                   session.receive().map(message -> decode(message.getPayloadAsText(), dataClass))
                       .doOnNext(emitter::next)
@@ -101,7 +121,6 @@ public class WebSocketResource extends ExternalResource implements Closeable {
   }
 
   private ServiceMessage decode(String payload, Class<?> dataClass) {
-    LOGGER.info("Decoding websocket message: " + payload);
     try {
       ServiceMessage message = objectMapper.readValue(payload, ServiceMessage.class);
       if (message.hasData(Map.class)) {
@@ -115,14 +134,12 @@ public class WebSocketResource extends ExternalResource implements Closeable {
     }
   }
 
-  private WebSocketMessage encode(Object message) {
-    LOGGER.info("Encoding to websocket message: " + message);
+  private String encode(Object message) {
     try {
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      objectMapper.writeValue(baos, message);
-      NettyDataBuffer dataBuffer = BUFFER_FACTORY.allocateBuffer();
-      dataBuffer.write(baos.toByteArray());
-      return new WebSocketMessage(WebSocketMessage.Type.BINARY, dataBuffer);
+      StringWriter writer = new StringWriter();
+      objectMapper.writeValue(writer, message);
+      writer.flush();
+      return writer.getBuffer().toString();
     } catch (IOException e) {
       LOGGER.error("Failed to encode to websocket message: " + message);
       throw new RuntimeException(e);
@@ -131,28 +148,7 @@ public class WebSocketResource extends ExternalResource implements Closeable {
 
   @Override
   protected void after() {
-    if (gateway != null) {
-      gateway.shutdown();
-    }
-    if (server != null) {
-      server.stop();
-    }
-    if (services != null) {
-      services.shutdown();
-    }
-  }
-
-  @Override
-  public void close() {
-    if (gateway != null) {
-      gateway.shutdown();
-    }
-    if (server != null) {
-      server.stop();
-    }
-    if (services != null) {
-      services.shutdown();
-    }
+    stopWebSocketServer();
   }
 
   private static ObjectMapper initMapper() {
