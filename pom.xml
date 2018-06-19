@@ -60,6 +60,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <slf4j.version>1.7.7</slf4j.version>
+    <log4j.version>2.11.0</log4j.version>
     <reactor-netty.version>0.7.7.RELEASE</reactor-netty.version>
     <reactor-core.version>3.1.7.RELEASE</reactor-core.version>
     <reactivestreams.version>1.0.2</reactivestreams.version>
@@ -78,12 +79,13 @@
   </properties>
 
   <modules>
-    <module>Http</module>
-    <module>Websocket</module>
-    <module>Examples</module>
-    <module>ExamplesRunner</module>
+    <module>Logger</module>
     <module>Config</module>
+    <module>Websocket</module>
+    <module>Http</module>
+    <module>Examples</module>
     <module>WebsocketRunner</module>
+    <module>ExamplesRunner</module>
     <module>Tests</module>
   </modules>
 
@@ -123,11 +125,22 @@
 
   <dependencyManagement>
     <dependencies>
-      <!-- Slf4j -->
+
+      <!-- Loggers -->
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
         <version>${slf4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-slf4j-impl</artifactId>
+        <version>${log4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-core</artifactId>
+        <version>${log4j.version}</version>
       </dependency>
 
       <!-- Reactor Netty -->
