@@ -40,7 +40,7 @@ public class WebsocketGatewayRunner {
 
     Microservices seed = Microservices.builder()
         .seeds(seedAddress)
-        .build().startAwait();
+        .startAwait();
 
     WebSocketServer server = new WebSocketServer(seed);
     server.start(listenAddress);
