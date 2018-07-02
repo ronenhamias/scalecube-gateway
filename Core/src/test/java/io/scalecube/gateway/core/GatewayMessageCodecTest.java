@@ -1,5 +1,7 @@
 package io.scalecube.gateway.core;
 
+import static io.scalecube.gateway.core.GatewayMessage.STREAM_ID_FIELD;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -245,10 +247,11 @@ public class GatewayMessageCodecTest {
 
   private GatewayMessage fromByteBuf(ByteBuf bb, Class<?> dataClass) throws IOException {
     // noinspection unchecked
+
     Map<String, Object> map = objectMapper.readValue((InputStream) new ByteBufInputStream(bb.slice()), HashMap.class);
     return GatewayMessage.builder()
         .qualifier((String) map.get(GatewayMessage.QUALIFIER_FIELD))
-        .streamId((Integer) map.get(GatewayMessage.STREAM_ID_FIELD))
+        .streamId(map.containsKey(STREAM_ID_FIELD) ? Long.valueOf(String.valueOf(map.get(STREAM_ID_FIELD))) : null)
         .signal((Integer) map.get(GatewayMessage.SIGNAL_FIELD))
         .inactivity((Integer) map.get(GatewayMessage.INACTIVITY_FIELD))
         .data(objectMapper.convertValue(map.get(GatewayMessage.DATA_FIELD), dataClass))

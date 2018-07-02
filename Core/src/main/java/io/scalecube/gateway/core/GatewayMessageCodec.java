@@ -7,7 +7,6 @@ import static io.scalecube.gateway.core.GatewayMessage.QUALIFIER_FIELD;
 import static io.scalecube.gateway.core.GatewayMessage.SIGNAL_FIELD;
 import static io.scalecube.gateway.core.GatewayMessage.STREAM_ID_FIELD;
 
-import io.netty.buffer.ByteBufAllocator;
 import io.scalecube.services.exceptions.BadRequestException;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
@@ -24,6 +23,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 
@@ -90,6 +90,8 @@ public class GatewayMessageCodec {
       generator.writeEndObject();
     } catch (Throwable ex) {
       // TODO: handle exception here
+      LOGGER.error("Failed to encode message: {}", message, ex);
+      throw new BadRequestException("Failed to encode message");
     }
     return byteBuf;
   }
@@ -126,7 +128,7 @@ public class GatewayMessageCodec {
             result.qualifier(jp.getValueAsString());
             break;
           case STREAM_ID_FIELD:
-            result.streamId(jp.getValueAsInt());
+            result.streamId(jp.getValueAsLong());
             break;
           case SIGNAL_FIELD:
             result.signal(jp.getValueAsInt());

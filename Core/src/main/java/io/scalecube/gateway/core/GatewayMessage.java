@@ -13,10 +13,50 @@ public class GatewayMessage {
   public static final String INACTIVITY_FIELD = "i";
 
   private String qualifier;
-  private Integer streamId;
+  private Long streamId;
   private Integer signal;
   private Object data;
   private Integer inactivity;
+
+  /**
+   * Get a builder by pattern form given {@link GatewayMessage}.
+   *
+   * @param msg Message form where to copy field values.
+   * @return builder with fields copied from given {@link GatewayMessage}
+   */
+  public static Builder from(GatewayMessage msg) {
+    Builder builder = new Builder();
+    builder.qualifier = msg.qualifier();
+    builder.streamId = msg.streamId();
+    builder.signal = msg.signal();
+    builder.inactivity = msg.inactivity();
+    builder.data = msg.data();
+    return builder;
+  }
+
+  /**
+   * Get a builder by pattern form given {@link ServiceMessage}.
+   *
+   * @param serviceMessage ServiceMessage form where to copy field values.
+   * @return builder with fields copied from given {@link ServiceMessage}
+   */
+  public static Builder from(ServiceMessage serviceMessage) {
+    Builder builder = new Builder();
+    builder.qualifier = serviceMessage.qualifier();
+    if (serviceMessage.hasData()) {
+      builder.data = serviceMessage.data();
+    }
+    if (serviceMessage.header(STREAM_ID_FIELD) != null) {
+      builder.streamId = Long.parseLong(serviceMessage.header(STREAM_ID_FIELD));
+    }
+    if (serviceMessage.header(SIGNAL_FIELD) != null) {
+      builder.signal = Integer.parseInt(serviceMessage.header(SIGNAL_FIELD));
+    }
+    if (serviceMessage.header(INACTIVITY_FIELD) != null) {
+      builder.inactivity = Integer.parseInt(serviceMessage.header(INACTIVITY_FIELD));
+    }
+    return builder;
+  }
 
   public static ServiceMessage toServiceMessage(GatewayMessage gatewayMessage) {
     ServiceMessage.Builder builder = ServiceMessage.builder()
@@ -35,24 +75,12 @@ public class GatewayMessage {
   }
 
   public static GatewayMessage toGatewayMessage(ServiceMessage serviceMessage) {
-    Builder builder = GatewayMessage.builder()
-        .qualifier(serviceMessage.qualifier())
-        .data(serviceMessage.data());
-    if (serviceMessage.header(STREAM_ID_FIELD) != null) {
-      builder.streamId(Integer.parseInt(serviceMessage.header(STREAM_ID_FIELD)));
-    }
-    if (serviceMessage.header(SIGNAL_FIELD) != null) {
-      builder.signal(Integer.parseInt(serviceMessage.header(SIGNAL_FIELD)));
-    }
-    if (serviceMessage.header(INACTIVITY_FIELD) != null) {
-      builder.inactivity(Integer.parseInt(serviceMessage.header(INACTIVITY_FIELD)));
-    }
-    return builder.build();
+    return from(serviceMessage).build();
   }
 
   GatewayMessage() {}
 
-  private GatewayMessage(String qualifier, Integer streamId, Integer signal, Object data, Integer inactivity) {
+  private GatewayMessage(String qualifier, Long streamId, Integer signal, Object data, Integer inactivity) {
     this.qualifier = qualifier;
     this.streamId = streamId;
     this.signal = signal;
@@ -68,7 +96,7 @@ public class GatewayMessage {
     return qualifier;
   }
 
-  public Integer streamId() {
+  public Long streamId() {
     return streamId;
   }
 
@@ -83,6 +111,10 @@ public class GatewayMessage {
 
   public Integer inactivity() {
     return inactivity;
+  }
+
+  public boolean hasSignal(Signal signal) {
+    return this.signal != null && this.signal == signal.code();
   }
 
   @Override
@@ -100,10 +132,10 @@ public class GatewayMessage {
   public static class Builder {
 
     private String qualifier;
-    private Integer streamId;
+    private Long streamId;
     private Integer signal;
     private Object data;
-    private Integer inactivity = 0;
+    private Integer inactivity;
 
     Builder() {}
 
@@ -112,13 +144,18 @@ public class GatewayMessage {
       return this;
     }
 
-    public Builder streamId(Integer streamId) {
+    public Builder streamId(Long streamId) {
       this.streamId = streamId;
       return this;
     }
 
     public Builder signal(Integer signal) {
       this.signal = signal;
+      return this;
+    }
+
+    public Builder signal(Signal signal) {
+      this.signal = signal.code();
       return this;
     }
 
@@ -133,22 +170,8 @@ public class GatewayMessage {
     }
 
     /**
-     * Get a builder by pattern form given {@link GatewayMessage}.
-     * @param msg Message form where to copy field values.
-     * @return builder with fields copied from given {@link GatewayMessage}
-     */
-    public Builder from(GatewayMessage msg) {
-      Builder builder = new Builder();
-      builder.qualifier = msg.qualifier();
-      builder.streamId = msg.streamId();
-      builder.signal = msg.signal();
-      builder.inactivity = msg.inactivity();
-      builder.data = msg.data();
-      return builder;
-    }
-
-    /**
      * Finally build the {@link GatewayMessage} from current builder.
+     *
      * @return {@link GatewayMessage} with parameters from current builder.
      */
     public GatewayMessage build() {

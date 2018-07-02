@@ -1,7 +1,7 @@
 package io.scalecube.gateway.core;
 
 public interface TestInputs {
-  Integer SID = 42;
+  Long SID = 42L;
   Integer I = 423;
   Integer SIG = 422;
   String Q = "/test/test";
