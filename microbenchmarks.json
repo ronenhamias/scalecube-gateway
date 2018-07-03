@@ -1,0 +1,8 @@
+[
+  {
+    "io.scalecube.gateway.benchmarks.DecodeGatewayMessageBenchmarkRunner": {}
+  },
+  {
+    "io.scalecube.gateway.benchmarks.EncodeGatewayMessageBenchmarkRunner": {}
+  }
+]
