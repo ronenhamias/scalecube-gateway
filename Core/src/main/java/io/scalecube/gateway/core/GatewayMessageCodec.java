@@ -7,7 +7,7 @@ import static io.scalecube.gateway.core.GatewayMessage.QUALIFIER_FIELD;
 import static io.scalecube.gateway.core.GatewayMessage.SIGNAL_FIELD;
 import static io.scalecube.gateway.core.GatewayMessage.STREAM_ID_FIELD;
 
-import io.scalecube.services.exceptions.BadRequestException;
+import io.scalecube.services.exceptions.MessageCodecException;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -26,6 +26,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.util.ReferenceCountUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,12 +49,12 @@ public class GatewayMessageCodec {
    * Encode given {@code message} to given {@code byteBuf}
    *
    * @param message - input message to be encoded.
-   * @throws Exception in case of issues during encoding.
+   * @throws MessageCodecException in case of issues during encoding.
    */
-  public ByteBuf encode(GatewayMessage message) {
+  public ByteBuf encode(GatewayMessage message) throws MessageCodecException {
     ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
     try (
-    JsonGenerator generator =
+        JsonGenerator generator =
             jsonFactory.createGenerator((OutputStream) new ByteBufOutputStream(byteBuf), JsonEncoding.UTF8)) {
       generator.writeStartObject();
 
@@ -89,9 +90,9 @@ public class GatewayMessageCodec {
 
       generator.writeEndObject();
     } catch (Throwable ex) {
-      // TODO: handle exception here
+      ReferenceCountUtil.safeRelease(byteBuf);
       LOGGER.error("Failed to encode message: {}", message, ex);
-      throw new BadRequestException("Failed to encode message");
+      throw new MessageCodecException("Failed to encode message", ex);
     }
     return byteBuf;
   }
@@ -103,9 +104,9 @@ public class GatewayMessageCodec {
    * @param byteBuf - contains raw {@link GatewayMessage} to be decoded.
    *
    * @return Decoded {@link GatewayMessage}.
-   * @throws BadRequestException - in case of issues during deserialization.
+   * @throws MessageCodecException - in case of issues during deserialization.
    */
-  public GatewayMessage decode(ByteBuf byteBuf) {
+  public GatewayMessage decode(ByteBuf byteBuf) throws MessageCodecException {
     try (InputStream stream = new ByteBufInputStream(byteBuf.slice())) {
       JsonParser jp = jsonFactory.createParser(stream);
       GatewayMessage.Builder result = GatewayMessage.builder();
@@ -113,7 +114,7 @@ public class GatewayMessageCodec {
       JsonToken current = jp.nextToken();
       if (current != JsonToken.START_OBJECT) {
         LOGGER.error("Root should be object: {}", byteBuf.toString(Charset.defaultCharset()));
-        throw new BadRequestException("Failed to decode message");
+        throw new MessageCodecException("Root should be object", null);
       }
       long dataStart = 0;
       long dataEnd = 0;
@@ -157,7 +158,7 @@ public class GatewayMessageCodec {
       return result.build();
     } catch (Throwable ex) {
       LOGGER.error("Failed to decode message: {}", byteBuf.toString(Charset.defaultCharset()), ex);
-      throw new BadRequestException("Failed to decode message");
+      throw new MessageCodecException("Failed to decode message", ex);
     }
   }
 
