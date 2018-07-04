@@ -9,6 +9,9 @@ import io.rsocket.transport.netty.server.NettyContextCloseable;
 import io.rsocket.transport.netty.server.WebsocketServerTransport;
 import io.rsocket.util.ByteBufPayload;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.InetSocketAddress;
 
 /**
@@ -17,6 +20,8 @@ import java.net.InetSocketAddress;
  * @see io.rsocket.RSocket
  */
 public class RSocketWebSocketGateway {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(RSocketWebSocketGateway.class);
 
   private static final int DEFAULT_PORT = 8080;
 
@@ -60,6 +65,8 @@ public class RSocketWebSocketGateway {
    * @return IP socket address on which gateway is listening to requests
    */
   public InetSocketAddress start() {
+    LOGGER.info("Starting gateway on {}", address);
+
     WebsocketServerTransport transport = WebsocketServerTransport.create(address.getHostName(), address.getPort());
 
     server = RSocketFactory.receive()
@@ -69,16 +76,22 @@ public class RSocketWebSocketGateway {
         .start()
         .block();
 
-    return address;
+    LOGGER.info("Gateway has been started successfully on {}", server.address());
+
+    return server.address();
   }
 
   /**
    * Stops the gateway.
    */
   public void stop() {
+    LOGGER.info("Stopping gateway...");
+
     if (server != null) {
       server.dispose();
     }
+
+    LOGGER.info("Gateway has been stopped successfully");
   }
 
   public InetSocketAddress address() {
