@@ -117,6 +117,10 @@ public class GatewayMessage {
     return this.signal != null && this.signal == signal.code();
   }
 
+  public ServiceMessage toServiceMessage() {
+    return toServiceMessage(this);
+  }
+
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder("GatewayMessage{");
