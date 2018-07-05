@@ -1,7 +1,7 @@
 package io.scalecube.gateway.rsocket.websocket;
 
 import io.scalecube.gateway.core.GatewayMessage;
-import io.scalecube.gateway.core.GatewayMessageCodec;
+import io.scalecube.gateway.rsocket.core.RSocketGatewayMessageCodec;
 import io.scalecube.services.ServiceCall;
 import io.scalecube.services.api.ServiceMessage;
 
@@ -21,10 +21,10 @@ import reactor.core.publisher.Mono;
 
 class RSocketGatewayAcceptor implements SocketAcceptor {
 
-  private GatewayMessageCodec codec;
+  private RSocketGatewayMessageCodec codec;
   private ServiceCall serviceCall;
 
-  public RSocketGatewayAcceptor(GatewayMessageCodec codec, ServiceCall serviceCall) {
+  public RSocketGatewayAcceptor(RSocketGatewayMessageCodec codec, ServiceCall serviceCall) {
     this.codec = codec;
     this.serviceCall = serviceCall;
   }
@@ -35,7 +35,7 @@ class RSocketGatewayAcceptor implements SocketAcceptor {
   }
 
   private ServiceMessage toServiceMessage(Payload payload) {
-    return codec.decode(payload.sliceData()).toServiceMessage();
+    return codec.decode(payload).toServiceMessage();
   }
 
   private Payload toPayload(ServiceMessage serviceMessage) {

@@ -1,6 +1,6 @@
 package io.scalecube.gateway.rsocket.websocket;
 
-import io.scalecube.gateway.core.GatewayMessageCodec;
+import io.scalecube.gateway.rsocket.core.RSocketGatewayMessageCodec;
 import io.scalecube.services.Microservices;
 
 import io.rsocket.RSocketFactory;
@@ -56,7 +56,7 @@ public class RSocketWebSocketGateway {
    */
   public RSocketWebSocketGateway(Microservices microservices, InetSocketAddress inetSocketAddress) {
     address = inetSocketAddress;
-    socketAcceptor = new RSocketGatewayAcceptor(new GatewayMessageCodec(), microservices.call().create());
+    socketAcceptor = new RSocketGatewayAcceptor(new RSocketGatewayMessageCodec(), microservices.call().create());
   }
 
   /**
