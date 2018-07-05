@@ -7,7 +7,7 @@ import static io.scalecube.gateway.core.GatewayMessage.SIGNAL_FIELD;
 import static io.scalecube.gateway.core.GatewayMessage.STREAM_ID_FIELD;
 
 import io.scalecube.gateway.core.GatewayMessage;
-import io.scalecube.gateway.websocket.WebSocketServer;
+import io.scalecube.gateway.websocket.WebsocketServer;
 import io.scalecube.services.Microservices;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
@@ -18,10 +18,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
@@ -31,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.NettyDataBufferFactory;
 import org.springframework.web.reactive.socket.WebSocketMessage;
+import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -42,6 +42,7 @@ import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class WebsocketResource extends ExternalResource {
 
@@ -55,11 +56,11 @@ public class WebsocketResource extends ExternalResource {
     objectMapper = initMapper();
   }
 
-  private WebSocketServer websocketServer;
+  private WebsocketServer websocketServer;
   private InetSocketAddress websocketServerAddress;
   private URI websocketServerUri;
 
-  public WebSocketServer getWebsocketServer() {
+  public WebsocketServer getWebsocketServer() {
     return websocketServer;
   }
 
@@ -71,22 +72,20 @@ public class WebsocketResource extends ExternalResource {
     return websocketServerUri;
   }
 
-  public WebsocketResource startWebSocketServer(Microservices gateway) {
-    websocketServer = new WebSocketServer(gateway);
+  public WebsocketResource startWebsocketServer(Microservices gateway) {
+    websocketServer = new WebsocketServer(gateway);
     websocketServerAddress = websocketServer.start();
 
-    String hostAddress = websocketServerAddress.getAddress().getHostAddress();
-    int port = websocketServerAddress.getPort();
-    websocketServerUri = UriComponentsBuilder.newInstance()
-        .scheme("ws")
-        .host(hostAddress)
-        .port(port)
-        .build().toUri();
+    websocketServerUri = //
+        UriComponentsBuilder.newInstance().scheme("ws")
+            .host(websocketServerAddress.getAddress().getHostAddress())
+            .port(websocketServerAddress.getPort())
+            .build().toUri();
 
     return this;
   }
 
-  public WebsocketResource stopWebSocketServer() {
+  public WebsocketResource stopWebsocketServer() {
     if (websocketServer != null) {
       try {
         websocketServer.stop();
@@ -97,38 +96,110 @@ public class WebsocketResource extends ExternalResource {
     return this;
   }
 
-  public Flux<GatewayMessage> sendMessages(Publisher<GatewayMessage> messages, Duration timeout,
-      Class<?>... dataClasses) {
-    return sendPayloads(Flux.from(messages).map(this::encode), timeout, dataClasses);
+  public WebsocketInvocation.Builder newInvocationForMessages(Publisher<GatewayMessage> publisher) {
+    return new WebsocketInvocation.Builder()
+        .websocketServerUri(websocketServerUri)
+        .publisher(Flux.from(publisher)
+            .map(WebsocketResource::encode)
+            .map(str -> new WebSocketMessage(WebSocketMessage.Type.BINARY,
+                BUFFER_FACTORY.wrap(Unpooled.copiedBuffer(str, Charset.defaultCharset())))));
   }
 
-  public Flux<GatewayMessage> sendPayloads(Publisher<String> messages, Duration timeout, Class<?>... dataClasses) {
-    return sendWebsocketMessages(Flux.from(messages).map(str -> {
-      ByteBuf byteBuf = Unpooled.copiedBuffer(str, Charset.defaultCharset());
-      return new WebSocketMessage(WebSocketMessage.Type.BINARY, BUFFER_FACTORY.wrap(byteBuf));
-    }), timeout, dataClasses);
+  public WebsocketInvocation.Builder newInvocationForStrings(Publisher<String> publisher) {
+    return new WebsocketInvocation.Builder()
+        .websocketServerUri(websocketServerUri)
+        .publisher(Flux.from(publisher)
+            .map(str -> new WebSocketMessage(WebSocketMessage.Type.BINARY,
+                BUFFER_FACTORY.wrap(Unpooled.copiedBuffer(str, Charset.defaultCharset())))));
   }
 
-  public Flux<GatewayMessage> sendWebsocketMessages(Publisher<WebSocketMessage> messages,
-      Duration timeout,
-      Class<?>... dataClasses) {
-    ReactorNettyWebSocketClient client = new ReactorNettyWebSocketClient();
-    LOGGER.info("Created websocket client: {} for uri: {}", client, websocketServerUri);
+  public static class WebsocketInvocation {
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(6);
 
-    return Flux.create((FluxSink<GatewayMessage> emitter) -> client
-        .execute(websocketServerUri, session -> {
-          LOGGER.info("{} started sending messages to: {}", client, websocketServerUri);
-          return session.send(messages)
-              .thenMany(
-                  session.receive().map(message -> decode(message.getPayloadAsText(), dataClasses))
-                      .doOnNext(emitter::next)
-                      .doOnComplete(emitter::complete)
-                      .doOnError(emitter::error))
-              .then();
-        }).block(timeout));
+    private final Publisher<?> publisher;
+    private final Duration timeout;
+    private final Consumer<WebSocketSession> sessionConsumer;
+    private final Class<?>[] dataClasses;
+    private final URI websocketServerUri;
+
+    public WebsocketInvocation(Builder builder) {
+      this.publisher = builder.publisher;
+      this.timeout = builder.timeout;
+      this.sessionConsumer = builder.sessionConsumer;
+      this.dataClasses = builder.dataClasses;
+      this.websocketServerUri = builder.websocketServerUri;
+    }
+
+    private Flux<GatewayMessage> invoke() {
+
+      ReactorNettyWebSocketClient client = new ReactorNettyWebSocketClient();
+      LOGGER.info("Created websocket client: {} for uri: {}", client, websocketServerUri);
+
+      return Flux.create(emitter -> client.execute(websocketServerUri, session -> {
+        try {
+          if (sessionConsumer != null) {
+            sessionConsumer.accept(session);
+          }
+        } catch (Throwable ex) {
+          LOGGER.error("Exception occured at sessionConsumer on client: {}, cause: {}", client, ex, ex);
+          throw Exceptions.propagate(ex);
+        }
+
+        LOGGER.info("{} started sending messages to: {}", client, websocketServerUri);
+
+        // noinspection unchecked
+        return session.send((Publisher<WebSocketMessage>) publisher)
+            .thenMany(session.receive()
+                .map(message -> decode(message.getPayloadAsText(), dataClasses))
+                .doOnNext(emitter::next)
+                .doOnComplete(emitter::complete)
+                .doOnError(emitter::error))
+            .then();
+      }).block(timeout));
+    }
+
+    public static class Builder {
+      private URI websocketServerUri;
+      private Publisher<?> publisher;
+      private Duration timeout = DEFAULT_TIMEOUT;
+      private Consumer<WebSocketSession> sessionConsumer = session -> {
+      };
+      private Class<?>[] dataClasses;
+
+      private Builder() {}
+
+      public Builder websocketServerUri(URI websocketServerUri) {
+        this.websocketServerUri = websocketServerUri;
+        return this;
+      }
+
+      private Builder publisher(Publisher<?> publisher) {
+        this.publisher = publisher;
+        return this;
+      }
+
+      public Builder timeout(Duration timeout) {
+        this.timeout = timeout;
+        return this;
+      }
+
+      public Builder sessionConsumer(Consumer<WebSocketSession> sessionConsumer) {
+        this.sessionConsumer = sessionConsumer;
+        return this;
+      }
+
+      public Builder dataClasses(Class<?>... dataClasses) {
+        this.dataClasses = dataClasses;
+        return this;
+      }
+
+      public Flux<GatewayMessage> invoke() {
+        return new WebsocketInvocation(this).invoke();
+      }
+    }
   }
 
-  private GatewayMessage decode(String payload, Class<?>[] dataClasses) {
+  private static GatewayMessage decode(String payload, Class<?>[] dataClasses) {
     try {
       // noinspection unchecked
       Map<String, Object> map = objectMapper.readValue(payload, HashMap.class);
@@ -153,11 +224,11 @@ public class WebsocketResource extends ExternalResource {
       return builder.build();
     } catch (IOException e) {
       LOGGER.error("Failed to decode websocket message: " + payload);
-      throw new RuntimeException(e);
+      throw Exceptions.propagate(e);
     }
   }
 
-  private String encode(GatewayMessage message) {
+  private static String encode(GatewayMessage message) {
     try {
       Map<String, Object> response = new HashMap<>();
       response.put(QUALIFIER_FIELD, message.qualifier());
@@ -171,13 +242,13 @@ public class WebsocketResource extends ExternalResource {
       return writer.getBuffer().toString();
     } catch (IOException e) {
       LOGGER.error("Failed to encode to websocket message: " + message);
-      throw new RuntimeException(e);
+      throw Exceptions.propagate(e);
     }
   }
 
   @Override
   protected void after() {
-    stopWebSocketServer();
+    stopWebsocketServer();
   }
 
   private static ObjectMapper initMapper() {
