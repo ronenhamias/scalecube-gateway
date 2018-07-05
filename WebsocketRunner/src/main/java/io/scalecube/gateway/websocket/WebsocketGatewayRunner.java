@@ -42,7 +42,7 @@ public class WebsocketGatewayRunner {
         .seeds(seedAddress)
         .startAwait();
 
-    WebSocketServer server = new WebSocketServer(seed);
+    WebsocketServer server = new WebsocketServer(seed);
     server.start(listenAddress);
 
     Thread.currentThread().join();
