@@ -12,7 +12,7 @@ public class RSocketWebSocketGatewayRunner {
         .seeds(SEED_ADDRESS)
         .startAwait();
 
-    RSocketWebSocketGateway gateway = new RSocketWebSocketGateway(seed);
+    RSocketWebsocketGateway gateway = new RSocketWebsocketGateway(seed);
 
     gateway.start();
 

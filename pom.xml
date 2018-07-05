@@ -94,8 +94,8 @@
     <module>ExamplesRunner</module>
     <module>Tests</module>
     <module>Benchmarks</module>
-    <module>RSocketWebSocket</module>
-    <module>RSocketWebSocketRunner</module>
+    <module>RSocketWebsocket</module>
+    <module>RSocketWebsocketRunner</module>
   </modules>
 
   <dependencies>

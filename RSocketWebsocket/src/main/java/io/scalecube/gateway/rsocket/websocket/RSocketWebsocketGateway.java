@@ -1,6 +1,5 @@
 package io.scalecube.gateway.rsocket.websocket;
 
-import io.scalecube.gateway.rsocket.core.RSocketGatewayMessageCodec;
 import io.scalecube.services.Microservices;
 
 import io.rsocket.RSocketFactory;
@@ -19,9 +18,9 @@ import java.net.InetSocketAddress;
  *
  * @see io.rsocket.RSocket
  */
-public class RSocketWebSocketGateway {
+public class RSocketWebsocketGateway {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(RSocketWebSocketGateway.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RSocketWebsocketGateway.class);
 
   private static final int DEFAULT_PORT = 8080;
 
@@ -34,7 +33,7 @@ public class RSocketWebSocketGateway {
    *
    * @param microservices instance of {@link Microservices}
    */
-  public RSocketWebSocketGateway(Microservices microservices) {
+  public RSocketWebsocketGateway(Microservices microservices) {
     this(microservices, DEFAULT_PORT);
   }
 
@@ -44,7 +43,7 @@ public class RSocketWebSocketGateway {
    * @param microservices instance of {@link Microservices}
    * @param port gateway port
    */
-  public RSocketWebSocketGateway(Microservices microservices, int port) {
+  public RSocketWebsocketGateway(Microservices microservices, int port) {
     this(microservices, new InetSocketAddress(port));
   }
 
@@ -54,9 +53,9 @@ public class RSocketWebSocketGateway {
    * @param microservices instance of {@link Microservices}
    * @param inetSocketAddress gateway IP socket address
    */
-  public RSocketWebSocketGateway(Microservices microservices, InetSocketAddress inetSocketAddress) {
+  public RSocketWebsocketGateway(Microservices microservices, InetSocketAddress inetSocketAddress) {
     address = inetSocketAddress;
-    socketAcceptor = new RSocketGatewayAcceptor(new RSocketGatewayMessageCodec(), microservices.call().create());
+    socketAcceptor = new RSocketGatewayAcceptor(microservices.call().create());
   }
 
   /**
