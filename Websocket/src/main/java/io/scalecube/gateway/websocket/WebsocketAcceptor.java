@@ -76,6 +76,12 @@ public final class WebsocketAcceptor {
               throw new BadRequestException("sid=" + streamId + " is already registered on session");
             }
 
+            // check message contains quailifier
+            if (gatewayRequest.qualifier() == null) {
+              LOGGER.error("Failed gateway request: {}, q is missing for session: {}", gatewayRequest, session);
+              throw new BadRequestException("q is missing");
+            }
+
             AtomicBoolean receivedErrorMessage = new AtomicBoolean(false);
 
             ServiceMessage serviceRequest = GatewayMessage.toServiceMessage(gatewayRequest);
@@ -98,11 +104,12 @@ public final class WebsocketAcceptor {
                     ? Mono.empty()
                     : Mono.just(GatewayMessage.builder().streamId(streamId).signal(Signal.COMPLETE).build())))
                 .onErrorResume(t -> Mono.just(toErrorMessage(t, streamId)))
-                .doOnTerminate(() -> session.dispose(streamId))
+                .doFinally($ -> session.dispose(streamId))
                 .subscribe(sink::next, sink::error, sink::complete);
 
             session.register(sid, disposable);
           } catch (Throwable ex) {
+            ReferenceCountUtil.safeRelease(frame);
             sink.next(toErrorMessage(ex, sid));
             sink.complete();
           }
@@ -139,7 +146,7 @@ public final class WebsocketAcceptor {
     try {
       return gatewayMessageCodec.decode(frame.content());
     } catch (Throwable ex) {
-      ReferenceCountUtil.safeRelease(frame);
+      // we will release it in catch block of the onConnect
       throw new BadRequestException(ex.getMessage());
     }
   }
