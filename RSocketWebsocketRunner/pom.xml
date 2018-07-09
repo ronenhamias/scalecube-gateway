@@ -12,7 +12,7 @@
   <artifactId>scalecube-gateway-rsocket-websocket-runner</artifactId>
 
   <properties>
-    <mainClass>io.scalecube.gateway.rsocket.websocket.RSocketWebSocketGatewayRunner</mainClass>
+    <mainClass>io.scalecube.gateway.rsocket.websocket.RSocketWebsocketGatewayRunner</mainClass>
   </properties>
 
   <dependencies>

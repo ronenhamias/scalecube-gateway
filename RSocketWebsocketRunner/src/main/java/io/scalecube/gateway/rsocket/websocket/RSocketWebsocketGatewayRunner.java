@@ -8,7 +8,7 @@ import io.scalecube.transport.Address;
 import java.util.Collections;
 import java.util.List;
 
-public class RSocketWebSocketGatewayRunner {
+public class RSocketWebsocketGatewayRunner {
 
   private static final String SEEDS = "SEEDS";
   private static final List<String> DEFAULT_SEEDS = Collections.singletonList("localhost:4802");
@@ -23,7 +23,7 @@ public class RSocketWebSocketGatewayRunner {
         .seeds(seeds)
         .startAwait();
 
-    RSocketWebsocketGateway gateway = new RSocketWebsocketGateway(seed);
+    RSocketWebsocketServer gateway = new RSocketWebsocketServer(seed);
 
     gateway.start();
 
