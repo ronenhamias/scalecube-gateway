@@ -90,7 +90,6 @@
     <module>Http</module>
     <module>Examples</module>
     <module>WebsocketRunner</module>
-    <module>ExamplesRunner</module>
     <module>Tests</module>
     <module>Benchmarks</module>
     <module>RSocketWebsocket</module>
