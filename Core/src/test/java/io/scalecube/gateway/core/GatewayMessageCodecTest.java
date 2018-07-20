@@ -1,6 +1,9 @@
 package io.scalecube.gateway.core;
 
 import static io.scalecube.gateway.core.GatewayMessage.STREAM_ID_FIELD;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -15,8 +18,7 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,10 +38,10 @@ public class GatewayMessageCodecTest {
 
     GatewayMessage result = codec.decode(input);
 
-    Assert.assertEquals(TestInputs.Q, result.qualifier());
-    Assert.assertEquals(TestInputs.SID, result.streamId());
-    Assert.assertEquals(TestInputs.SIG, result.signal());
-    Assert.assertEquals(TestInputs.I, result.inactivity());
+    assertEquals(TestInputs.Q, result.qualifier());
+    assertEquals(TestInputs.SID, result.streamId());
+    assertEquals(TestInputs.SIG, result.signal());
+    assertEquals(TestInputs.I, result.inactivity());
   }
 
   @Test
@@ -54,10 +56,10 @@ public class GatewayMessageCodecTest {
 
     GatewayMessage result = codec.decode(input);
 
-    Assert.assertEquals(TestInputs.Q, result.qualifier());
-    Assert.assertEquals(TestInputs.SIG, result.signal());
-    Assert.assertEquals(TestInputs.SID, result.streamId());
-    Assert.assertNull(result.data());
+    assertEquals(TestInputs.Q, result.qualifier());
+    assertEquals(TestInputs.SIG, result.signal());
+    assertEquals(TestInputs.SID, result.streamId());
+    assertNull(result.data());
   }
 
   @Test
@@ -72,11 +74,11 @@ public class GatewayMessageCodecTest {
 
     GatewayMessage result = codec.decode(input);
 
-    Assert.assertEquals(TestInputs.Q, result.qualifier());
-    Assert.assertEquals(TestInputs.SIG, result.signal());
-    Assert.assertEquals(TestInputs.SID, result.streamId());
-    Assert.assertTrue(result.data() instanceof ByteBuf);
-    Assert.assertEquals(expectedData, Integer.valueOf(((ByteBuf) result.data()).toString(StandardCharsets.UTF_8)));
+    assertEquals(TestInputs.Q, result.qualifier());
+    assertEquals(TestInputs.SIG, result.signal());
+    assertEquals(TestInputs.SID, result.streamId());
+    assertTrue(result.data() instanceof ByteBuf);
+    assertEquals(expectedData, Integer.valueOf(((ByteBuf) result.data()).toString(StandardCharsets.UTF_8)));
   }
 
   @Test
@@ -91,11 +93,11 @@ public class GatewayMessageCodecTest {
 
     GatewayMessage result = codec.decode(input);
 
-    Assert.assertEquals(TestInputs.Q, result.qualifier());
-    Assert.assertEquals(TestInputs.SIG, result.signal());
-    Assert.assertEquals(TestInputs.SID, result.streamId());
-    Assert.assertTrue(result.data() instanceof ByteBuf);
-    Assert.assertEquals(expectedData, Integer.valueOf(((ByteBuf) result.data()).toString(StandardCharsets.UTF_8)));
+    assertEquals(TestInputs.Q, result.qualifier());
+    assertEquals(TestInputs.SIG, result.signal());
+    assertEquals(TestInputs.SID, result.streamId());
+    assertTrue(result.data() instanceof ByteBuf);
+    assertEquals(expectedData, Integer.valueOf(((ByteBuf) result.data()).toString(StandardCharsets.UTF_8)));
   }
 
   @Test
@@ -110,11 +112,11 @@ public class GatewayMessageCodecTest {
 
     GatewayMessage result = codec.decode(input);
 
-    Assert.assertEquals(TestInputs.Q, result.qualifier());
-    Assert.assertEquals(TestInputs.SIG, result.signal());
-    Assert.assertEquals(TestInputs.SID, result.streamId());
-    Assert.assertTrue(result.data() instanceof ByteBuf);
-    Assert.assertEquals(expectedData, ((ByteBuf) result.data()).toString(StandardCharsets.UTF_8));
+    assertEquals(TestInputs.Q, result.qualifier());
+    assertEquals(TestInputs.SIG, result.signal());
+    assertEquals(TestInputs.SID, result.streamId());
+    assertTrue(result.data() instanceof ByteBuf);
+    assertEquals(expectedData, ((ByteBuf) result.data()).toString(StandardCharsets.UTF_8));
   }
 
   @Test
@@ -129,11 +131,11 @@ public class GatewayMessageCodecTest {
 
     GatewayMessage result = codec.decode(input);
 
-    Assert.assertEquals(TestInputs.Q, result.qualifier());
-    Assert.assertEquals(TestInputs.SIG, result.signal());
-    Assert.assertEquals(TestInputs.SID, result.streamId());
-    Assert.assertTrue(result.data() instanceof ByteBuf);
-    Assert.assertEquals(expectedData, Boolean.valueOf(((ByteBuf) result.data()).toString(StandardCharsets.UTF_8)));
+    assertEquals(TestInputs.Q, result.qualifier());
+    assertEquals(TestInputs.SIG, result.signal());
+    assertEquals(TestInputs.SID, result.streamId());
+    assertTrue(result.data() instanceof ByteBuf);
+    assertEquals(expectedData, Boolean.valueOf(((ByteBuf) result.data()).toString(StandardCharsets.UTF_8)));
   }
 
   @Test
@@ -148,11 +150,11 @@ public class GatewayMessageCodecTest {
 
     GatewayMessage result = codec.decode(input);
 
-    Assert.assertEquals(TestInputs.Q, result.qualifier());
-    Assert.assertEquals(TestInputs.SIG, result.signal());
-    Assert.assertEquals(TestInputs.SID, result.streamId());
-    Assert.assertTrue(result.data() instanceof ByteBuf);
-    Assert.assertEquals(expectedData, ((ByteBuf) result.data()).toString(StandardCharsets.UTF_8));
+    assertEquals(TestInputs.Q, result.qualifier());
+    assertEquals(TestInputs.SIG, result.signal());
+    assertEquals(TestInputs.SID, result.streamId());
+    assertTrue(result.data() instanceof ByteBuf);
+    assertEquals(expectedData, ((ByteBuf) result.data()).toString(StandardCharsets.UTF_8));
   }
 
   @Test
@@ -167,11 +169,11 @@ public class GatewayMessageCodecTest {
 
     GatewayMessage result = codec.decode(input);
 
-    Assert.assertEquals(TestInputs.Q, result.qualifier());
-    Assert.assertEquals(TestInputs.SIG, result.signal());
-    Assert.assertEquals(TestInputs.SID, result.streamId());
-    Assert.assertTrue(result.data() instanceof ByteBuf);
-    Assert.assertEquals(expectedData, ((ByteBuf) result.data()).toString(StandardCharsets.UTF_8));
+    assertEquals(TestInputs.Q, result.qualifier());
+    assertEquals(TestInputs.SIG, result.signal());
+    assertEquals(TestInputs.SID, result.streamId());
+    assertTrue(result.data() instanceof ByteBuf);
+    assertEquals(expectedData, ((ByteBuf) result.data()).toString(StandardCharsets.UTF_8));
   }
 
   @Test
@@ -187,11 +189,11 @@ public class GatewayMessageCodecTest {
 
     GatewayMessage actual = fromByteBuf(bb, TestInputs.Entity.class);
 
-    Assert.assertEquals(expected.qualifier(), actual.qualifier());
-    Assert.assertEquals(expected.signal(), actual.signal());
-    Assert.assertEquals(expected.streamId(), actual.streamId());
-    Assert.assertEquals(expected.inactivity(), actual.inactivity());
-    Assert.assertEquals(data, actual.data());
+    assertEquals(expected.qualifier(), actual.qualifier());
+    assertEquals(expected.signal(), actual.signal());
+    assertEquals(expected.streamId(), actual.streamId());
+    assertEquals(expected.inactivity(), actual.inactivity());
+    assertEquals(data, actual.data());
   }
 
   @Test
@@ -206,11 +208,11 @@ public class GatewayMessageCodecTest {
     ByteBuf bb = codec.encode(expected);
     GatewayMessage actual = fromByteBuf(bb, Integer.class);
 
-    Assert.assertEquals(expected.qualifier(), actual.qualifier());
-    Assert.assertEquals(expected.signal(), actual.signal());
-    Assert.assertEquals(expected.streamId(), actual.streamId());
-    Assert.assertEquals(expected.inactivity(), actual.inactivity());
-    Assert.assertEquals(data, actual.data());
+    assertEquals(expected.qualifier(), actual.qualifier());
+    assertEquals(expected.signal(), actual.signal());
+    assertEquals(expected.streamId(), actual.streamId());
+    assertEquals(expected.inactivity(), actual.inactivity());
+    assertEquals(data, actual.data());
   }
 
   @Test
@@ -226,11 +228,11 @@ public class GatewayMessageCodecTest {
 
     GatewayMessage actual = fromByteBuf(bb, Boolean.class);
 
-    Assert.assertEquals(expected.qualifier(), actual.qualifier());
-    Assert.assertEquals(expected.signal(), actual.signal());
-    Assert.assertEquals(expected.streamId(), actual.streamId());
-    Assert.assertEquals(expected.inactivity(), actual.inactivity());
-    Assert.assertEquals(data, actual.data());
+    assertEquals(expected.qualifier(), actual.qualifier());
+    assertEquals(expected.signal(), actual.signal());
+    assertEquals(expected.streamId(), actual.streamId());
+    assertEquals(expected.inactivity(), actual.inactivity());
+    assertEquals(data, actual.data());
   }
 
   private ByteBuf toByteBuf(String data) {
