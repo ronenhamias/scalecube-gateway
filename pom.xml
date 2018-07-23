@@ -65,8 +65,8 @@
     <reactor-core.version>3.1.8.RELEASE</reactor-core.version>
     <reactivestreams.version>1.0.2</reactivestreams.version>
     <scalecube-config.version>0.3.2</scalecube-config.version>
-    <scalecube-services.version>2.1.4</scalecube-services.version>
-    <scalecube-benchmarks.version>1.1.7</scalecube-benchmarks.version>
+    <scalecube-services.version>2.1.7</scalecube-services.version>
+    <scalecube-benchmarks.version>1.1.10</scalecube-benchmarks.version>
 
     <junit.jupiter.version>5.2.0</junit.jupiter.version>
     <junit.vintage.version>5.2.0</junit.vintage.version>
@@ -85,7 +85,6 @@
 
   <modules>
     <module>Logger</module>
-    <module>Core</module>
     <module>Config</module>
     <module>Websocket</module>
     <module>Http</module>
@@ -115,12 +114,6 @@
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-params</artifactId>
       <version>${junit.jupiter.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.vintage</groupId>
-      <artifactId>junit-vintage-engine</artifactId>
-      <version>${junit.vintage.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
