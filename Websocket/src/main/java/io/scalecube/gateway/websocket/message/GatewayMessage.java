@@ -1,4 +1,4 @@
-package io.scalecube.gateway.core;
+package io.scalecube.gateway.websocket.message;
 
 import io.scalecube.services.api.ServiceMessage;
 

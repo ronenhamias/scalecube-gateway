@@ -1,4 +1,4 @@
-package io.scalecube.gateway.core;
+package io.scalecube.gateway.websocket.message;
 
 public interface TestInputs {
   Long SID = 42L;
