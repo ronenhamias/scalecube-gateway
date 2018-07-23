@@ -1,6 +1,6 @@
-package io.scalecube.gateway.core;
+package io.scalecube.gateway.websocket.message;
 
-import static io.scalecube.gateway.core.GatewayMessage.STREAM_ID_FIELD;
+import static io.scalecube.gateway.websocket.message.GatewayMessage.STREAM_ID_FIELD;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;

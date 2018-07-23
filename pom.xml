@@ -85,7 +85,6 @@
 
   <modules>
     <module>Logger</module>
-    <module>Core</module>
     <module>Config</module>
     <module>Websocket</module>
     <module>Http</module>
