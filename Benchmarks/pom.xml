@@ -12,13 +12,12 @@
   <dependencies>
     <dependency>
       <groupId>io.scalecube</groupId>
-      <artifactId>scalecube-gateway-core</artifactId>
-      <version>${project.version}</version>
+      <artifactId>scalecube-benchmarks-api</artifactId>
     </dependency>
-
     <dependency>
       <groupId>io.scalecube</groupId>
-      <artifactId>scalecube-benchmarks-api</artifactId>
+      <artifactId>scalecube-gateway-websocket</artifactId>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
 
