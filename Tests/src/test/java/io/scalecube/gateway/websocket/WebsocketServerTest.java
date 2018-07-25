@@ -19,7 +19,6 @@ import io.scalecube.gateway.examples.GreetingServiceCancelCallback;
 import io.scalecube.gateway.websocket.message.GatewayMessage;
 import io.scalecube.gateway.websocket.message.Signal;
 import io.scalecube.services.api.ErrorData;
-import io.scalecube.services.api.NullData;
 import io.scalecube.services.api.Qualifier;
 
 import reactor.core.publisher.Flux;
@@ -321,9 +320,9 @@ public class WebsocketServerTest {
     Publisher<GatewayMessage> requests = Mono.just(GatewayMessage.from(GREETING_EMPTY_ONE).streamId(STREAM_ID).build());
 
     StepVerifier.create(websocketExtension.newInvocationForMessages(requests).invoke())
-        .assertNext(msg -> assertMessage(null, msg))
         .assertNext(this::assertCompleteMessage)
-        .expectComplete().verify(TIMEOUT);
+        .expectComplete()
+        .verify(TIMEOUT);
   }
 
   @Test
@@ -338,14 +337,10 @@ public class WebsocketServerTest {
     StepVerifier.FirstStep<GatewayMessage> stepVerifier = StepVerifier
         .create(websocketExtension
             .newInvocationForMessages(requests)
-            .dataClasses(NullData.class)
             .invoke());
 
     IntStream.range(0, REQUEST_NUM)
-        .forEach(i -> {
-          stepVerifier.assertNext(msg -> assertMessage(null, msg));
-          stepVerifier.assertNext(this::assertCompleteMessage);
-        });
+        .forEach(i -> stepVerifier.assertNext(this::assertCompleteMessage));
 
     stepVerifier.expectComplete().verify(TIMEOUT);
   }
