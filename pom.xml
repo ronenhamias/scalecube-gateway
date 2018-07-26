@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>io.scalecube</groupId>
@@ -61,7 +62,10 @@
 
     <slf4j.version>1.7.7</slf4j.version>
     <log4j.version>2.11.0</log4j.version>
-    <reactor-netty.version>0.7.7.RELEASE</reactor-netty.version>
+    <jackson.version>2.9.5</jackson.version>
+    <netty.version>4.1.25.Final</netty.version>
+    <rsocket-core.version>0.11.3</rsocket-core.version>
+    <reactor-netty.version>0.7.8.RELEASE</reactor-netty.version>
     <reactor-core.version>3.1.8.RELEASE</reactor-core.version>
     <reactivestreams.version>1.0.2</reactivestreams.version>
     <scalecube-config.version>0.3.2</scalecube-config.version>
@@ -73,9 +77,8 @@
     <mockito.version>1.9.5</mockito.version>
     <hamcrest-all.version>1.3</hamcrest-all.version>
     <hamcrest-core.version>1.3</hamcrest-core.version>
-    <jackson.version>2.9.5</jackson.version>
-    <spring-webflux.version>5.0.6.RELEASE</spring-webflux.version>
-    <netty.version>4.1.25.Final</netty.version>
+
+    <spring-webflux.version>5.0.7.RELEASE</spring-webflux.version>
 
     <maven-gpg-plugin.version>1.6</maven-gpg-plugin.version>
     <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
@@ -90,10 +93,11 @@
     <module>Http</module>
     <module>Examples</module>
     <module>WebsocketRunner</module>
-    <module>Tests</module>
-    <module>Benchmarks</module>
     <module>RSocketWebsocket</module>
     <module>RSocketWebsocketRunner</module>
+    <module>ClientSdk</module>
+    <module>Tests</module>
+    <module>Benchmarks</module>
   </modules>
 
   <dependencies>
@@ -150,7 +154,6 @@
 
   <dependencyManagement>
     <dependencies>
-
       <!-- Loggers -->
       <dependency>
         <groupId>org.slf4j</groupId>
@@ -200,6 +203,21 @@
         <artifactId>scalecube-services-api</artifactId>
         <version>${scalecube-services.version}</version>
       </dependency>
+      <dependency>
+        <groupId>io.scalecube</groupId>
+        <artifactId>scalecube-benchmarks-api</artifactId>
+        <version>${scalecube-benchmarks.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.scalecube</groupId>
+        <artifactId>scalecube-services-codec</artifactId>
+        <version>${scalecube-services.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.scalecube</groupId>
+        <artifactId>scalecube-services-jackson</artifactId>
+        <version>${scalecube-services.version}</version>
+      </dependency>
 
       <!-- Scalecube Config -->
       <dependency>
@@ -208,28 +226,23 @@
         <version>${scalecube-config.version}</version>
       </dependency>
 
-      <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-core</artifactId>
-        <version>${jackson.version}</version>
-      </dependency>
+      <!-- Netty -->
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-buffer</artifactId>
         <version>${netty.version}</version>
       </dependency>
 
+      <!-- RSocket dependency -->
       <dependency>
-        <groupId>io.scalecube</groupId>
-        <artifactId>scalecube-benchmarks-api</artifactId>
-        <version>${scalecube-benchmarks.version}</version>
+        <groupId>io.rsocket</groupId>
+        <artifactId>rsocket-core</artifactId>
+        <version>${rsocket-core.version}</version>
       </dependency>
-
-      <!-- test dependency -->
       <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-databind</artifactId>
-        <version>${jackson.version}</version>
+        <groupId>io.rsocket</groupId>
+        <artifactId>rsocket-transport-netty</artifactId>
+        <version>${rsocket-core.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -378,7 +391,7 @@
                   <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                     <mainClass>${mainClass}</mainClass>
                   </transformer>
-                  <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                  <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                 </transformers>
                 <outputDirectory>${project.build.directory}</outputDirectory>
                 <createDependencyReducedPom>false</createDependencyReducedPom>
