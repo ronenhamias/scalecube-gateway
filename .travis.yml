@@ -28,9 +28,3 @@ deploy:
   - "./src/main/scripts/cd/deploy.sh"
   on:
     branch: master
-deploy:
-  provider: script
-  script:
-  - "./src/main/scripts/cd/docker_push.sh.sh"
-  on:
-    branch: feature/docker-support

@@ -496,28 +496,28 @@
                 <tag>${project.version}</tag>
               </configuration>
             </execution>
-            <!--<execution>-->
-            <!--<id>create-extra-tags</id>-->
-            <!--<goals>-->
-            <!--<goal>tag</goal>-->
-            <!--</goals>-->
-            <!--<phase>install</phase>-->
-            <!--<configuration>-->
-            <!--<tag>${extratags}</tag>-->
-            <!--<skipTag>${noextratags}</skipTag>-->
-            <!--</configuration>-->
-            <!--</execution>-->
-            <!--<execution>-->
-            <!--<id>push-extra-tags</id>-->
-            <!--<goals>-->
-            <!--<goal>push</goal>-->
-            <!--</goals>-->
-            <!--<phase>deploy</phase>-->
-            <!--<configuration>-->
-            <!--<tag>${extratags}</tag>-->
-            <!--<skip>${noextratags}</skip>-->
-            <!--</configuration>-->
-            <!--</execution>-->
+            <execution>
+              <id>create-extra-tags</id>
+              <goals>
+                <goal>tag</goal>
+              </goals>
+              <phase>install</phase>
+              <configuration>
+                <tag>${extratags}</tag>
+                <skipTag>${noextratags}</skipTag>
+              </configuration>
+            </execution>
+            <execution>
+              <id>push-extra-tags</id>
+              <goals>
+                <goal>push</goal>
+              </goals>
+              <phase>deploy</phase>
+              <configuration>
+                <tag>${extratags}</tag>
+                <skip>${noextratags}</skip>
+              </configuration>
+            </execution>
           </executions>
           <configuration>
             <useMavenSettingsForAuth>true</useMavenSettingsForAuth>
@@ -580,49 +580,49 @@
       </build>
     </profile>
 
-    <!--<profile>-->
-    <!--<id>no-extra-tags</id>-->
-    <!--<properties>-->
-    <!--<noextratags>true</noextratags>-->
-    <!--</properties>-->
-    <!--<activation>-->
-    <!--<activeByDefault>true</activeByDefault>-->
-    <!--</activation>-->
-    <!--</profile>-->
-    <!--<profile>-->
-    <!--<id>extra-tags</id>-->
-    <!--<properties>-->
-    <!--<noextratags>false</noextratags>-->
-    <!--</properties>-->
-    <!--<activation>-->
-    <!--<property>-->
-    <!--<name>extratags</name>-->
-    <!--</property>-->
-    <!--</activation>-->
-    <!--</profile>-->
-    <!--<profile>-->
-    <!--<id>SkipDockerGoals</id>-->
-    <!--<activation>-->
-    <!--<activeByDefault>true</activeByDefault>-->
-    <!--</activation>-->
-    <!--<properties>-->
-    <!--<dockerfile.skip>true</dockerfile.skip>-->
-    <!--</properties>-->
-    <!--</profile>-->
-    <!--<profile>-->
-    <!--<id>RunDockerGoals</id>-->
-    <!--<activation>-->
-    <!--<os>-->
-    <!--<family>unix</family>-->
-    <!--</os>-->
-    <!--<file>-->
-    <!--<exists>/usr/bin/docker</exists>-->
-    <!--</file>-->
-    <!--</activation>-->
-    <!--<properties>-->
-    <!--<dockerfile.skip>false</dockerfile.skip>-->
-    <!--</properties>-->
-    <!--</profile>-->
+    <profile>
+      <id>no-extra-tags</id>
+      <properties>
+        <noextratags>true</noextratags>
+      </properties>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+    </profile>
+    <profile>
+      <id>extra-tags</id>
+      <properties>
+        <noextratags>false</noextratags>
+      </properties>
+      <activation>
+        <property>
+          <name>extratags</name>
+        </property>
+      </activation>
+    </profile>
+    <profile>
+      <id>SkipDockerGoals</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <dockerfile.skip>true</dockerfile.skip>
+      </properties>
+    </profile>
+    <profile>
+      <id>RunDockerGoals</id>
+      <activation>
+        <os>
+          <family>unix</family>
+        </os>
+        <file>
+          <exists>/usr/bin/docker</exists>
+        </file>
+      </activation>
+      <properties>
+        <dockerfile.skip>false</dockerfile.skip>
+      </properties>
+    </profile>
   </profiles>
 
 </project>
