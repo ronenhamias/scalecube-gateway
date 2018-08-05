@@ -1,5 +1,7 @@
 package io.scalecube.gateway.rsocket.websocket;
 
+import io.scalecube.app.decoration.Logo;
+import io.scalecube.app.packages.PackageInfo;
 import io.scalecube.config.ConfigRegistry;
 import io.scalecube.gateway.config.GatewayConfigRegistry;
 import io.scalecube.services.Microservices;
@@ -36,6 +38,11 @@ public class RSocketWebsocketGatewayRunner {
 
     gateway.start();
 
+    Logo.from(new PackageInfo())
+        .port(String.valueOf(seed.cluster().address().port()))
+        .ip(seed.cluster().address().host())
+        .draw();
+
     Runtime.getRuntime().addShutdownHook(new Thread(gateway::stop));
 
     Thread.currentThread().join();
@@ -45,13 +52,13 @@ public class RSocketWebsocketGatewayRunner {
     MetricRegistry metrics = new MetricRegistry();
     File reporterDir = new File(REPORTER_PATH);
     if (!reporterDir.exists()) {
-      //noinspection ResultOfMethodCallIgnored
+      // noinspection ResultOfMethodCallIgnored
       reporterDir.mkdirs();
     }
     CsvReporter csvReporter = CsvReporter.forRegistry(metrics)
-      .convertDurationsTo(TimeUnit.MILLISECONDS)
-      .convertRatesTo(TimeUnit.SECONDS)
-      .build(reporterDir);
+        .convertDurationsTo(TimeUnit.MILLISECONDS)
+        .convertRatesTo(TimeUnit.SECONDS)
+        .build(reporterDir);
 
     csvReporter.start(10, TimeUnit.SECONDS);
     return metrics;

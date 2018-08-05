@@ -2,6 +2,9 @@ package io.scalecube.gateway.websocket;
 
 import com.codahale.metrics.CsvReporter;
 import com.codahale.metrics.MetricRegistry;
+
+import io.scalecube.app.decoration.Logo;
+import io.scalecube.app.packages.PackageInfo;
 import io.scalecube.config.ConfigRegistry;
 import io.scalecube.gateway.config.GatewayConfigRegistry;
 import io.scalecube.services.Microservices;
@@ -52,6 +55,11 @@ public class WebsocketGatewayRunner {
     WebsocketServer server = new WebsocketServer(seed);
     server.start(listenAddress);
 
+    Logo.from(new PackageInfo())
+        .port(String.valueOf(seed.cluster().address().port()))
+        .ip(seed.cluster().address().host())
+        .draw();
+
     Thread.currentThread().join();
   }
 
@@ -59,13 +67,13 @@ public class WebsocketGatewayRunner {
     MetricRegistry metrics = new MetricRegistry();
     File reporterDir = new File(REPORTER_PATH);
     if (!reporterDir.exists()) {
-      //noinspection ResultOfMethodCallIgnored
+      // noinspection ResultOfMethodCallIgnored
       reporterDir.mkdirs();
     }
     CsvReporter csvReporter = CsvReporter.forRegistry(metrics)
-      .convertDurationsTo(TimeUnit.MILLISECONDS)
-      .convertRatesTo(TimeUnit.SECONDS)
-      .build(reporterDir);
+        .convertDurationsTo(TimeUnit.MILLISECONDS)
+        .convertRatesTo(TimeUnit.SECONDS)
+        .build(reporterDir);
 
     csvReporter.start(10, TimeUnit.SECONDS);
     return metrics;
