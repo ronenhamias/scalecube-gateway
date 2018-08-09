@@ -71,4 +71,9 @@ public class GreetingServiceCancelCallback implements GreetingService {
   public Flux<String> delayMany(String name) {
     return greetingService.delayMany(name).doOnCancel(onCancel);
   }
+
+  @Override
+  public Flux<Long> requestInfiniteStream(StreamRequest request) {
+    return greetingService.requestInfiniteStream(request).doOnCancel(onCancel);
+  }
 }

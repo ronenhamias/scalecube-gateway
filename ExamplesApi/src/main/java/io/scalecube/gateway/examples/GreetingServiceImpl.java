@@ -72,4 +72,19 @@ public class GreetingServiceImpl implements GreetingService {
   public Flux<String> delayMany(String name) {
     return Flux.interval(Duration.ofMillis(500), Duration.ofSeconds(2)).map(i -> name);
   }
+
+  @Override
+  public Flux<Long> requestInfiniteStream(StreamRequest request) {
+    Flux<Flux<Long>> fluxes = Flux
+      .interval(Duration.ofMillis(request.getIntervalMillis()))
+      .map(tick -> Flux.create(s -> {
+        for (int i = 0; i < request.getMessagesPerInterval(); i++) {
+          s.next(System.currentTimeMillis());
+        }
+        s.complete();
+      }));
+
+    return Flux.concat(fluxes);
+  }
+
 }
