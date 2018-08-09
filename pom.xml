@@ -70,8 +70,8 @@
     <spring-webflux.version>5.0.7.RELEASE</spring-webflux.version>
     <reactor-core.version>3.1.8.RELEASE</reactor-core.version>
     <reactivestreams.version>1.0.2</reactivestreams.version>
-    <scalecube-config.version>0.3.2</scalecube-config.version>
-    <scalecube-services.version>2.1.9</scalecube-services.version>
+    <scalecube-config.version>0.3.4</scalecube-config.version>
+    <scalecube-services.version>2.1.11</scalecube-services.version>
     <scalecube-benchmarks.version>1.1.12</scalecube-benchmarks.version>
 
     <junit.jupiter.version>5.2.0</junit.jupiter.version>
@@ -206,7 +206,7 @@
         <version>${reactivestreams.version}</version>
       </dependency>
 
-      <!-- Scalecube Modules -->
+      <!-- Scalecube Services -->
       <dependency>
         <groupId>io.scalecube</groupId>
         <artifactId>scalecube-services</artifactId>
@@ -219,6 +219,21 @@
       </dependency>
       <dependency>
         <groupId>io.scalecube</groupId>
+        <artifactId>scalecube-services-discovery</artifactId>
+        <version>${scalecube-services.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.scalecube</groupId>
+        <artifactId>rsocket-services-transport</artifactId>
+        <version>${scalecube-services.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.scalecube</groupId>
+        <artifactId>scalecube-services-jackson</artifactId>
+        <version>${scalecube-services.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.scalecube</groupId>
         <artifactId>scalecube-benchmarks-api</artifactId>
         <version>${scalecube-benchmarks.version}</version>
       </dependency>
@@ -226,16 +241,6 @@
         <groupId>io.scalecube</groupId>
         <artifactId>scalecube-benchmarks-log4j2</artifactId>
         <version>${scalecube-benchmarks.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.scalecube</groupId>
-        <artifactId>scalecube-services-codec</artifactId>
-        <version>${scalecube-services.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.scalecube</groupId>
-        <artifactId>scalecube-services-jackson</artifactId>
-        <version>${scalecube-services.version}</version>
       </dependency>
 
       <!-- Scalecube Config -->
