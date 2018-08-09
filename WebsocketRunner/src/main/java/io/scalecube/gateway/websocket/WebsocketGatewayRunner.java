@@ -56,8 +56,8 @@ public class WebsocketGatewayRunner {
     server.start(listenAddress);
 
     Logo.from(new PackageInfo())
-        .port(String.valueOf(seed.cluster().address().port()))
-        .ip(seed.cluster().address().host())
+        .port(String.valueOf(seed.discovery().address().port()))
+        .ip(seed.discovery().address().host())
         .draw();
 
     Thread.currentThread().join();

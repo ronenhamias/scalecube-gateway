@@ -39,8 +39,8 @@ public class RSocketWebsocketGatewayRunner {
     gateway.start();
 
     Logo.from(new PackageInfo())
-        .port(String.valueOf(seed.cluster().address().port()))
-        .ip(seed.cluster().address().host())
+        .port(String.valueOf(seed.discovery().address().port()))
+        .ip(seed.discovery().address().host())
         .draw();
 
     Runtime.getRuntime().addShutdownHook(new Thread(gateway::stop));
