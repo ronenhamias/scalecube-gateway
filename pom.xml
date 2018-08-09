@@ -72,7 +72,7 @@
     <reactivestreams.version>1.0.2</reactivestreams.version>
     <scalecube-config.version>0.3.4</scalecube-config.version>
     <scalecube-services.version>2.1.11</scalecube-services.version>
-    <scalecube-benchmarks.version>1.1.12</scalecube-benchmarks.version>
+    <scalecube-benchmarks.version>1.1.13</scalecube-benchmarks.version>
 
     <junit.jupiter.version>5.2.0</junit.jupiter.version>
     <junit.vintage.version>5.2.0</junit.vintage.version>
@@ -98,6 +98,7 @@
     <module>Config</module>
     <module>Websocket</module>
     <module>Http</module>
+    <module>ExamplesApi</module>
     <module>Examples</module>
     <module>WebsocketRunner</module>
     <module>RSocketWebsocket</module>

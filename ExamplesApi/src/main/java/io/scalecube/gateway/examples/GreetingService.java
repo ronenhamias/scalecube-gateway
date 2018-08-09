@@ -44,4 +44,7 @@ public interface GreetingService {
 
   @ServiceMethod("delay/many")
   Flux<String> delayMany(String name);
+
+  @ServiceMethod("requestInfiniteStream")
+  Flux<Long> requestInfiniteStream(StreamRequest request);
 }
