@@ -16,9 +16,32 @@
     </dependency>
     <dependency>
       <groupId>io.scalecube</groupId>
+      <artifactId>scalecube-benchmarks-log4j2</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.scalecube</groupId>
       <artifactId>scalecube-gateway-websocket</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>io.scalecube</groupId>
+      <artifactId>scalecube-gateway-rsocket-websocket</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.scalecube</groupId>
+      <artifactId>scalecube-gateway-clientsdk</artifactId>
+      <version>${project.version}</version>
+    </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>
