@@ -89,12 +89,12 @@ public class GreetingServiceImpl implements GreetingService {
 
   @Override
   public Flux<ServiceMessage> rawStream(ServiceMessage request) {
-    return Flux
-      .range(0, Integer.MAX_VALUE)
-      .map(
-        i -> ServiceMessage.builder()
-          .header(TIMESTAMP_KEY, "" + System.currentTimeMillis())
-          .build()
-      );
+    return Mono.fromCallable(
+      () -> ServiceMessage.builder()
+        .header(TIMESTAMP_KEY, "" + System.currentTimeMillis())
+        .build())
+      .subscribeOn(Schedulers.elastic())
+      .repeat()
+      .onBackpressureDrop();
   }
 }
