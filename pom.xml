@@ -71,7 +71,7 @@
     <reactor-core.version>3.1.8.RELEASE</reactor-core.version>
     <reactivestreams.version>1.0.2</reactivestreams.version>
     <scalecube-config.version>0.3.4</scalecube-config.version>
-    <scalecube-services.version>2.1.11</scalecube-services.version>
+    <scalecube-services.version>2.1.17-SNAPSHOT</scalecube-services.version>
     <scalecube-benchmarks.version>1.1.14</scalecube-benchmarks.version>
 
     <junit.jupiter.version>5.2.0</junit.jupiter.version>
