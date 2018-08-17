@@ -16,7 +16,7 @@ public class RSocketWebsocketGatewayRunner {
 
   private static final String SEEDS = "SEEDS";
   private static final List<String> DEFAULT_SEEDS = Collections.singletonList("localhost:4802");
-  public static final String REPORTER_PATH = "reports/gw/metrics";
+  private static final String REPORTER_PATH = "reports/gw/metrics";
 
   public static void main(String[] args) throws InterruptedException {
     final ConfigRegistry configRegistry = GatewayConfigRegistry.configRegistry();
@@ -28,7 +28,7 @@ public class RSocketWebsocketGatewayRunner {
 
     Microservices.builder()
         .seeds(seeds)
-        .gateway(GatewayConfig.builder(RSocketWebsocketGateway.class).build())
+      .gateway(GatewayConfig.builder("rsws", RSocketWebsocketGateway.class).build())
         .metrics(metrics)
         .startAwait();
 
