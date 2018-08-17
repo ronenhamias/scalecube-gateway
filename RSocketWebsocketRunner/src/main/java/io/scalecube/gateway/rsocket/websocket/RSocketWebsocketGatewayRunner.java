@@ -1,13 +1,12 @@
 package io.scalecube.gateway.rsocket.websocket;
 
+import com.codahale.metrics.CsvReporter;
+import com.codahale.metrics.MetricRegistry;
 import io.scalecube.config.ConfigRegistry;
 import io.scalecube.gateway.config.GatewayConfigRegistry;
 import io.scalecube.services.Microservices;
+import io.scalecube.services.gateway.GatewayConfig;
 import io.scalecube.transport.Address;
-
-import com.codahale.metrics.CsvReporter;
-import com.codahale.metrics.MetricRegistry;
-
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
@@ -17,7 +16,7 @@ public class RSocketWebsocketGatewayRunner {
 
   private static final String SEEDS = "SEEDS";
   private static final List<String> DEFAULT_SEEDS = Collections.singletonList("localhost:4802");
-  public static final String REPORTER_PATH = "reports/gw/metrics";
+  private static final String REPORTER_PATH = "reports/gw/metrics";
 
   public static void main(String[] args) throws InterruptedException {
     final ConfigRegistry configRegistry = GatewayConfigRegistry.configRegistry();
@@ -27,16 +26,11 @@ public class RSocketWebsocketGatewayRunner {
 
     MetricRegistry metrics = initMetricRegistry();
 
-    Microservices seed = Microservices.builder()
+    Microservices.builder()
         .seeds(seeds)
+      .gateway(GatewayConfig.builder("rsws", RSocketWebsocketGateway.class).build())
         .metrics(metrics)
         .startAwait();
-
-    RSocketWebsocketServer gateway = new RSocketWebsocketServer(seed);
-
-    gateway.start();
-
-    Runtime.getRuntime().addShutdownHook(new Thread(gateway::stop));
 
     Thread.currentThread().join();
   }
