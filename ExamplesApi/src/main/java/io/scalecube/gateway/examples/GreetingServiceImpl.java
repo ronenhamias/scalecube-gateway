@@ -1,11 +1,11 @@
 package io.scalecube.gateway.examples;
 
+import io.scalecube.services.api.ServiceMessage;
+import java.time.Duration;
+import java.util.stream.LongStream;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-
-import java.time.Duration;
-import java.util.stream.LongStream;
 
 public class GreetingServiceImpl implements GreetingService {
 
@@ -87,4 +87,14 @@ public class GreetingServiceImpl implements GreetingService {
     return Flux.concat(fluxes);
   }
 
+  @Override
+  public Flux<ServiceMessage> rawStream(ServiceMessage request) {
+    return Flux
+      .range(0, Integer.MAX_VALUE)
+      .map(
+        i -> ServiceMessage.builder()
+          .header(TIMESTAMP_KEY, "" + System.currentTimeMillis())
+          .build()
+      );
+  }
 }

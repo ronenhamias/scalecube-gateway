@@ -1,17 +1,18 @@
 package io.scalecube.gateway.websocket;
 
-import com.codahale.metrics.CsvReporter;
-import com.codahale.metrics.MetricRegistry;
 import io.scalecube.config.ConfigRegistry;
 import io.scalecube.gateway.config.GatewayConfigRegistry;
 import io.scalecube.services.Microservices;
+import io.scalecube.services.gateway.GatewayConfig;
 import io.scalecube.transport.Address;
+
+import com.codahale.metrics.CsvReporter;
+import com.codahale.metrics.MetricRegistry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,14 +44,11 @@ public class WebsocketGatewayRunner {
 
     MetricRegistry metrics = initMetricRegistry();
 
-    InetSocketAddress listenAddress = new InetSocketAddress(websocketPort);
     Microservices seed = Microservices.builder()
         .seeds(seedAddress)
+        .gateway(GatewayConfig.builder("ws", WebsocketGateway.class).port(websocketPort).build())
         .metrics(metrics)
         .startAwait();
-
-    WebsocketServer server = new WebsocketServer(seed);
-    server.start(listenAddress);
 
     Thread.currentThread().join();
   }
