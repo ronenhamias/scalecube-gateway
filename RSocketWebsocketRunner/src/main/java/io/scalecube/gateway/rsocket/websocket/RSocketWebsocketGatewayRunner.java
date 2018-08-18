@@ -5,6 +5,7 @@ import io.scalecube.app.packages.PackageInfo;
 import io.scalecube.config.ConfigRegistry;
 import io.scalecube.gateway.config.GatewayConfigRegistry;
 import io.scalecube.services.Microservices;
+import io.scalecube.services.gateway.GatewayConfig;
 import io.scalecube.transport.Address;
 
 import com.codahale.metrics.CsvReporter;
@@ -19,7 +20,7 @@ public class RSocketWebsocketGatewayRunner {
 
   private static final String SEEDS = "SEEDS";
   private static final List<String> DEFAULT_SEEDS = Collections.singletonList("localhost:4802");
-  public static final String REPORTER_PATH = "reports/gw/metrics";
+  private static final String REPORTER_PATH = "reports/gw/metrics";
 
   public static void main(String[] args) throws InterruptedException {
     final ConfigRegistry configRegistry = GatewayConfigRegistry.configRegistry();
@@ -29,22 +30,18 @@ public class RSocketWebsocketGatewayRunner {
 
     MetricRegistry metrics = initMetricRegistry();
 
-    Microservices seed = Microservices.builder()
+    Microservices ms = Microservices.builder()
         .seeds(seeds)
+        .gateway(GatewayConfig.builder("rsws", RSocketWebsocketGateway.class).build())
         .metrics(metrics)
         .startAwait();
-
-    RSocketWebsocketServer gateway = new RSocketWebsocketServer(seed);
-
-    gateway.start();
-
+   
+    
     Logo.from(new PackageInfo())
-        .port(String.valueOf(seed.discovery().address().port()))
-        .ip(seed.discovery().address().host())
+        .port(String.valueOf(ms.discovery().address().port()))
+        .ip(ms.discovery().address().host())
         .draw();
-
-    Runtime.getRuntime().addShutdownHook(new Thread(gateway::stop));
-
+    
     Thread.currentThread().join();
   }
 
