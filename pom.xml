@@ -99,9 +99,8 @@
     <module>Http</module>
     <module>ExamplesApi</module>
     <module>Examples</module>
-    <module>WebsocketRunner</module>
+    <module>GatewayRunner</module>
     <module>RSocketWebsocket</module>
-    <module>RSocketWebsocketRunner</module>
     <module>ClientSdk</module>
     <module>Tests</module>
     <module>Benchmarks</module>
