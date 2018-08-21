@@ -11,10 +11,11 @@ import io.scalecube.gateway.examples.GreetingRequest;
 import io.scalecube.gateway.examples.GreetingResponse;
 import io.scalecube.gateway.examples.GreetingService;
 import io.scalecube.gateway.examples.GreetingServiceImpl;
-import io.scalecube.gateway.rsocket.websocket.RSocketWebsocketServer;
+import io.scalecube.gateway.rsocket.websocket.RSocketWebsocketGateway;
 import io.scalecube.services.Microservices;
 import io.scalecube.services.codec.DataCodec;
 import io.scalecube.services.codec.HeadersCodec;
+import io.scalecube.services.gateway.GatewayConfig;
 import java.time.Duration;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -28,12 +29,13 @@ import reactor.test.StepVerifier;
 
 class RSocketClientSdkTest {
 
+  private static final String GATEWAY_ALIAS_NAME = "rsws";
+  private static final GatewayConfig gatewayConfig =
+    GatewayConfig.builder(GATEWAY_ALIAS_NAME, RSocketWebsocketGateway.class).build();
   private static final Duration SHUTDOWN_TIMEOUT = Duration.ofSeconds(3);
 
   private static final String JOHN = "John";
-  private static final int RSOCKET_PORT = 8080;
 
-  private static RSocketWebsocketServer rsocketServer;
   private static LoopResources clientLoopResources;
   private static Microservices seed;
 
@@ -41,26 +43,26 @@ class RSocketClientSdkTest {
 
   @BeforeAll
   static void startServer() {
-    seed = Microservices
-      .builder()
-      .services(new GreetingServiceImpl())
-      .startAwait();
+    seed =
+      Microservices.builder()
+        .services(new GreetingServiceImpl())
+        .gateway(gatewayConfig)
+        .startAwait();
 
-    rsocketServer = new RSocketWebsocketServer(seed, RSOCKET_PORT);
-    rsocketServer.start();
     clientLoopResources = LoopResources.create("eventLoop");
   }
 
   @AfterAll
   static void stopServers() {
-    rsocketServer.stop();
     clientLoopResources.disposeLater().block(SHUTDOWN_TIMEOUT);
     seed.shutdown().block(SHUTDOWN_TIMEOUT);
   }
 
   @BeforeEach
   void startClient() {
-    ClientSettings settings = ClientSettings.builder().port(RSOCKET_PORT).build();
+    int gatewayPort =
+      seed.gatewayAddress(GATEWAY_ALIAS_NAME, gatewayConfig.gatewayClass()).getPort();
+    ClientSettings settings = ClientSettings.builder().port(gatewayPort).build();
     ClientMessageCodec codec = new ClientMessageCodec(
       HeadersCodec.getInstance(settings.contentType()),
       DataCodec.getInstance(settings.contentType()));
@@ -148,7 +150,8 @@ class RSocketClientSdkTest {
     long currentTimestamp = System.currentTimeMillis();
 
     Flux<ClientMessage> rawStream = rsocketClient
-      .rawStream(ClientMessage.builder().qualifier("/" + GreetingService.QUALIFIER + "/rawStream").build())
+      .rawStream(
+        ClientMessage.builder().qualifier("/" + GreetingService.QUALIFIER + "/rawStream").build())
       .take(cnt);
 
     StepVerifier.create(rawStream)
@@ -156,6 +159,20 @@ class RSocketClientSdkTest {
         Long.parseLong(msg.headers().get(GreetingService.TIMESTAMP_KEY)) >= currentTimestamp)
       )
       .expectNextCount(cnt - 1 /* minus previous check */)
+      .expectComplete()
+      .verify();
+  }
+
+  @Test
+  void testRawRequestResponse() {
+    long currentTimestamp = System.currentTimeMillis();
+    Mono<ClientMessage> rawStream = rsocketClient
+      .rawRequestResponse(
+        ClientMessage.builder().qualifier("/" + GreetingService.QUALIFIER + "/rawStream").build());
+    StepVerifier.create(rawStream)
+      .assertNext(msg -> assertTrue(
+        Long.parseLong(msg.headers().get(GreetingService.TIMESTAMP_KEY)) >= currentTimestamp)
+      )
       .expectComplete()
       .verify();
   }
