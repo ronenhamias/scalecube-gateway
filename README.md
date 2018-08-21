@@ -1,6 +1,16 @@
 # Scalecube-gateway
 
-![image](https://user-images.githubusercontent.com/1706296/44406217-ba417f00-a563-11e8-9d1c-8cea9261b274.png)
+<table text-align="top">
+ <tr>
+   <td>
+    Scalecube-gateway allows act as the gate to the microservices cluster. its transparently discover and route requests to service endpoints.<br><br>
+  <br><br>
+  </td>
+  <td>
+  <img src="https://user-images.githubusercontent.com/1706296/44406217-ba417f00-a563-11e8-9d1c-8cea9261b274.png">
+  </td>
+</tr>
+</table>
 
 ## API-Gateway: 
 
