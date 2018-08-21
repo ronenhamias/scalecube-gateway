@@ -31,11 +31,12 @@ public class GreetingServiceImpl implements GreetingService {
 
   @Override
   public Flux<String> failingMany(String name) {
-    return Flux.push(sink -> {
-      sink.next("Echo:" + name);
-      sink.next("Echo:" + name);
-      sink.error(new RuntimeException("Echo:" + name));
-    });
+    return Flux.push(
+      sink -> {
+        sink.next("Echo:" + name);
+        sink.next("Echo:" + name);
+        sink.error(new RuntimeException("Echo:" + name));
+      });
   }
 
   @Override
@@ -75,26 +76,32 @@ public class GreetingServiceImpl implements GreetingService {
 
   @Override
   public Flux<Long> requestInfiniteStream(StreamRequest request) {
-    Flux<Flux<Long>> fluxes = Flux
-      .interval(Duration.ofMillis(request.getIntervalMillis()))
-      .map(tick -> Flux.create(s -> {
-        for (int i = 0; i < request.getMessagesPerInterval(); i++) {
-          s.next(System.currentTimeMillis());
-        }
-        s.complete();
-      }));
+    Flux<Flux<Long>> fluxes =
+      Flux.interval(Duration.ofMillis(request.getIntervalMillis()))
+        .map(
+          tick ->
+            Flux.create(
+              s -> {
+                for (int i = 0; i < request.getMessagesPerInterval(); i++) {
+                  s.next(System.currentTimeMillis());
+                }
+                s.complete();
+              }));
 
-    return Flux.concat(fluxes);
+    return Flux.concat(fluxes)
+      .publishOn(Schedulers.parallel())
+      .onBackpressureDrop();
   }
 
   @Override
   public Flux<ServiceMessage> rawStream(ServiceMessage request) {
-    return Flux
-      .range(0, Integer.MAX_VALUE)
-      .map(
-        i -> ServiceMessage.builder()
+    return Mono.fromCallable(
+      () ->
+        ServiceMessage.builder()
           .header(TIMESTAMP_KEY, "" + System.currentTimeMillis())
-          .build()
-      );
+          .build())
+      .subscribeOn(Schedulers.parallel())
+      .repeat()
+      .onBackpressureDrop();
   }
 }
