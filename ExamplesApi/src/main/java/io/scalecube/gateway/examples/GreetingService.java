@@ -2,7 +2,6 @@ package io.scalecube.gateway.examples;
 
 import io.scalecube.services.annotations.Service;
 import io.scalecube.services.annotations.ServiceMethod;
-
 import io.scalecube.services.api.ServiceMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -54,4 +53,7 @@ public interface GreetingService {
 
   @ServiceMethod("rawStream")
   Flux<ServiceMessage> rawStream(ServiceMessage request);
+
+  @ServiceMethod("broadcast")
+  Flux<Long> broadcast();
 }
