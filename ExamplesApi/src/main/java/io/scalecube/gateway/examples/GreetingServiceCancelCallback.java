@@ -84,7 +84,7 @@ public class GreetingServiceCancelCallback implements GreetingService {
   }
 
   @Override
-  public Flux<Long> broadcast() {
-    return greetingService.broadcast().doOnCancel(onCancel);
+  public Flux<Long> broadcastStream() {
+    return greetingService.broadcastStream().doOnCancel(onCancel);
   }
 }
