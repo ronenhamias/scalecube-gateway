@@ -6,7 +6,6 @@ import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.stream.LongStream;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink.OverflowStrategy;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -104,21 +103,16 @@ public class GreetingServiceImpl implements GreetingService {
     return Mono.fromCallable(callable).subscribeOn(Schedulers.parallel()).repeat();
   }
 
-  private Flux<Long> source =
-    Flux.<Long>create(
-      sink -> {
-        while (true) {
-          sink.next(1L);
-        }
-      },
-      OverflowStrategy.DROP)
-      .subscribeOn(Schedulers.newSingle("source"))
+  private Flux<Integer> source =
+    Flux.just(1)
+      .repeat()
+      .subscribeOn(Schedulers.newSingle("service-source"))
       .publish()
       .autoConnect()
       .onBackpressureDrop();
 
   @Override
-  public Flux<Long> broadcast() {
+  public Flux<Long> broadcastStream() {
     return source.map(i -> System.currentTimeMillis());
   }
 }
