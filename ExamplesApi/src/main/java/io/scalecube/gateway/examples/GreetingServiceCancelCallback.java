@@ -82,4 +82,9 @@ public class GreetingServiceCancelCallback implements GreetingService {
   public Flux<ServiceMessage> rawStream(ServiceMessage request) {
     return greetingService.rawStream(request).doOnCancel(onCancel);
   }
+
+  @Override
+  public Flux<Long> broadcast() {
+    return greetingService.broadcast().doOnCancel(onCancel);
+  }
 }
