@@ -100,7 +100,7 @@ public class GreetingServiceImpl implements GreetingService {
         ServiceMessage.builder()
           .header(TIMESTAMP_KEY, "" + System.currentTimeMillis())
           .build())
-      .subscribeOn(Schedulers.parallel())
+      .subscribeOn(Schedulers.elastic())
       .repeat()
       .onBackpressureDrop();
   }
