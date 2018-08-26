@@ -1,4 +1,4 @@
-package io.scalecube.gateway.websocket;
+package io.scalecube.gateway;
 
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
@@ -10,12 +10,11 @@ import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import reactor.core.publisher.Mono;
 import reactor.ipc.netty.resources.LoopResources;
 
-public class WebsocketLoopResources implements LoopResources {
+public class GatewayLoopResources implements LoopResources {
 
   private final boolean preferEpoll;
   private final EventLoopGroup bossGroup;
@@ -29,10 +28,11 @@ public class WebsocketLoopResources implements LoopResources {
    * @param bossGroup selector event loop group
    * @param workerGroup worker event loop group
    */
-  public WebsocketLoopResources(boolean preferEpoll, Executor bossGroup, Executor workerGroup) {
+  public GatewayLoopResources(
+    boolean preferEpoll, EventLoopGroup bossGroup, EventLoopGroup workerGroup) {
     this.preferEpoll = preferEpoll;
-    this.bossGroup = (EventLoopGroup) bossGroup;
-    this.workerGroup = (EventLoopGroup) workerGroup;
+    this.bossGroup = bossGroup;
+    this.workerGroup = workerGroup;
   }
 
   @Override

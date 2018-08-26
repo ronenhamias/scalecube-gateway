@@ -104,6 +104,7 @@
     <module>ClientSdk</module>
     <module>Tests</module>
     <module>Benchmarks</module>
+    <module>GatewayCommon</module>
   </modules>
 
   <dependencies>
