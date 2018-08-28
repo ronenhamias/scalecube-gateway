@@ -12,8 +12,15 @@ public class RemoteInvocationHandler implements InvocationHandler {
   private final Map<Method, MethodInfo> methods;
   private final ClientMessageCodec messageCodec;
 
+  /**
+   * Constructor for remote invocation handler.
+   *
+   * @param transport client sdk transport implementation
+   * @param methods methods
+   * @param messageCodec client message codec
+   */
   public RemoteInvocationHandler(
-    ClientTransport transport, Map<Method, MethodInfo> methods, ClientMessageCodec messageCodec) {
+      ClientTransport transport, Map<Method, MethodInfo> methods, ClientMessageCodec messageCodec) {
     this.transport = transport;
     this.methods = methods;
     this.messageCodec = messageCodec;
@@ -24,10 +31,10 @@ public class RemoteInvocationHandler implements InvocationHandler {
     MethodInfo methodInfo = methods.get(method);
 
     ClientMessage request =
-      ClientMessage.builder()
-        .qualifier(methodInfo.qualifier())
-        .data(methodInfo.parameterCount() != 0 ? args[0] : null)
-        .build();
+        ClientMessage.builder()
+            .qualifier(methodInfo.qualifier())
+            .data(methodInfo.parameterCount() != 0 ? args[0] : null)
+            .build();
 
     Class<?> responseType = methodInfo.parameterizedReturnType();
 

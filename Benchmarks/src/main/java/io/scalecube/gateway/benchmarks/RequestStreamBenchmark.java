@@ -14,19 +14,25 @@ public final class RequestStreamBenchmark {
     // Do not instantiate
   }
 
+  /**
+   * Runner function for benchmarks.
+   *
+   * @param args program arguments
+   * @param benchmarkStateFactory producer function for {@link AbstractBenchmarkState}
+   */
   public static void runWith(
-    String[] args,
+      String[] args,
       Function<BenchmarksSettings, AbstractBenchmarkState<?>> benchmarkStateFactory) {
 
     BenchmarksSettings settings =
-      BenchmarksSettings.from(args)
-        .injectors(1000)
-        .messageRate(100_000)
-        .rampUpDuration(Duration.ofSeconds(60))
-        .executionTaskDuration(Duration.ofSeconds(300))
-        .consoleReporterEnabled(true)
-        .durationUnit(TimeUnit.MILLISECONDS)
-        .build();
+        BenchmarksSettings.from(args)
+            .injectors(1000)
+            .messageRate(100_000)
+            .rampUpDuration(Duration.ofSeconds(60))
+            .executionTaskDuration(Duration.ofSeconds(300))
+            .consoleReporterEnabled(true)
+            .durationUnit(TimeUnit.MILLISECONDS)
+            .build();
 
     AbstractBenchmarkState<?> benchmarkState = benchmarkStateFactory.apply(settings);
 
@@ -35,15 +41,15 @@ public final class RequestStreamBenchmark {
         state -> {
           Timer timer = state.timer("service-stream-timer");
           StreamRequest streamRequest =
-            new StreamRequest()
-              .setIntervalMillis(settings.executionTaskInterval().toMillis())
-              .setMessagesPerInterval(settings.messagesPerExecutionInterval());
+              new StreamRequest()
+                  .setIntervalMillis(settings.executionTaskInterval().toMillis())
+                  .setMessagesPerInterval(settings.messagesPerExecutionInterval());
           return (executionTick, client) -> {
             ExampleService service = client.forService(ExampleService.class);
             return service
                 .requestInfiniteStream(streamRequest)
-              .doOnNext(
-                next -> timer.update(System.currentTimeMillis() - next, TimeUnit.MILLISECONDS));
+                .doOnNext(
+                    next -> timer.update(System.currentTimeMillis() - next, TimeUnit.MILLISECONDS));
           };
         },
         (state, client) -> client.close());

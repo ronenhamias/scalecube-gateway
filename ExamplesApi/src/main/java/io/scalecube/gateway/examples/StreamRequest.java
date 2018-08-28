@@ -5,9 +5,7 @@ public class StreamRequest {
   private long intervalMillis;
   private int messagesPerInterval;
 
-  /**
-   * For serialization/deserializatoin purposes.
-   */
+  /** For serialization/deserializatoin purposes. */
   public StreamRequest() {}
 
   public long getIntervalMillis() {
