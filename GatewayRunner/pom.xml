@@ -18,6 +18,18 @@
   <dependencies>
     <dependency>
       <groupId>io.scalecube</groupId>
+      <artifactId>rsocket-services-transport</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.scalecube</groupId>
+      <artifactId>scalecube-services-jackson</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.scalecube</groupId>
+      <artifactId>scalecube-services-discovery</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.scalecube</groupId>
       <artifactId>scalecube-gateway-http</artifactId>
       <version>${project.version}</version>
     </dependency>

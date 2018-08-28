@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>io.scalecube</groupId>
@@ -30,7 +31,8 @@
   <scm>
     <url>https://github.com/scalecube/scalecube</url>
     <connection>scm:git:git@github.com:scalecube/scalecube-gateway.git</connection>
-    <developerConnection>scm:git:git@github.com:scalecube/scalecube-gateway.git</developerConnection>
+    <developerConnection>scm:git:git@github.com:scalecube/scalecube-gateway.git
+    </developerConnection>
     <tag>HEAD</tag>
   </scm>
 
@@ -71,7 +73,7 @@
     <reactor-core.version>3.1.8.RELEASE</reactor-core.version>
     <reactivestreams.version>1.0.2</reactivestreams.version>
     <scalecube-config.version>0.3.4</scalecube-config.version>
-    <scalecube-services.version>2.1.17</scalecube-services.version>
+    <scalecube-services.version>2.1.23</scalecube-services.version>
     <scalecube-benchmarks.version>1.1.14</scalecube-benchmarks.version>
 
     <junit.jupiter.version>5.2.0</junit.jupiter.version>
@@ -104,6 +106,7 @@
     <module>ClientSdk</module>
     <module>Tests</module>
     <module>Benchmarks</module>
+    <module>GatewayCommon</module>
   </modules>
 
   <dependencies>
@@ -365,7 +368,8 @@
                 <failsOnError>true</failsOnError>
                 <maxAllowedViolations>0</maxAllowedViolations>
                 <suppressionsLocation>checkstyle-suppression.xml</suppressionsLocation>
-                <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
+                <suppressionsFileExpression>checkstyle.suppressions.file
+                </suppressionsFileExpression>
               </configuration>
               <goals>
                 <goal>check</goal>
@@ -419,10 +423,12 @@
               </goals>
               <configuration>
                 <transformers>
-                  <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <transformer
+                    implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                     <mainClass>${mainClass}</mainClass>
                   </transformer>
-                  <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                  <transformer
+                    implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                 </transformers>
                 <outputDirectory>${project.build.directory}</outputDirectory>
                 <createDependencyReducedPom>false</createDependencyReducedPom>
