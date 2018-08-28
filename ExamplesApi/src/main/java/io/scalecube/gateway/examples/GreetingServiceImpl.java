@@ -96,10 +96,10 @@ public class GreetingServiceImpl implements GreetingService {
   @Override
   public Flux<ServiceMessage> rawStream(ServiceMessage request) {
     Callable<ServiceMessage> callable =
-      () -> {
-        Builder builder = ServiceMessage.builder();
-        return builder.header(TIMESTAMP_KEY, "" + System.currentTimeMillis()).build();
-      };
+        () -> {
+          Builder builder = ServiceMessage.builder();
+          return builder.header(TIMESTAMP_KEY, "" + System.currentTimeMillis()).build();
+        };
     return Mono.fromCallable(callable).subscribeOn(Schedulers.parallel()).repeat();
   }
 }
