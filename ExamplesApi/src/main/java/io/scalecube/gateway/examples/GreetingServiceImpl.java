@@ -1,7 +1,9 @@
 package io.scalecube.gateway.examples;
 
 import io.scalecube.services.api.ServiceMessage;
+import io.scalecube.services.api.ServiceMessage.Builder;
 import java.time.Duration;
+import java.util.concurrent.Callable;
 import java.util.stream.LongStream;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -93,12 +95,11 @@ public class GreetingServiceImpl implements GreetingService {
 
   @Override
   public Flux<ServiceMessage> rawStream(ServiceMessage request) {
-    return Mono.fromCallable(
-            () ->
-                ServiceMessage.builder()
-                    .header(TIMESTAMP_KEY, "" + System.currentTimeMillis())
-                    .build())
-        .subscribeOn(Schedulers.parallel())
-        .repeat();
+    Callable<ServiceMessage> callable =
+      () -> {
+        Builder builder = ServiceMessage.builder();
+        return builder.header(TIMESTAMP_KEY, "" + System.currentTimeMillis()).build();
+      };
+    return Mono.fromCallable(callable).subscribeOn(Schedulers.parallel()).repeat();
   }
 }
