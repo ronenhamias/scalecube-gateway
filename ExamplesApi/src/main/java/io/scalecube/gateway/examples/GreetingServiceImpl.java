@@ -101,17 +101,4 @@ public class GreetingServiceImpl implements GreetingService {
         .subscribeOn(Schedulers.parallel())
         .repeat();
   }
-
-  private Flux<Integer> source =
-    Flux.just(1)
-      .repeat()
-      .subscribeOn(Schedulers.newSingle("service-source"))
-      .publish()
-      .autoConnect()
-      .onBackpressureDrop();
-
-  @Override
-  public Flux<Long> broadcastStream() {
-    return source.map(i -> System.currentTimeMillis());
-  }
 }
