@@ -1,13 +1,17 @@
 package io.scalecube.gateway.examples;
 
 import io.scalecube.services.api.ServiceMessage;
+import io.scalecube.services.api.ServiceMessage.Builder;
 import java.time.Duration;
+import java.util.concurrent.Callable;
 import java.util.stream.LongStream;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class GreetingServiceImpl implements GreetingService {
+
+  private Flux<Long> source = Flux.fromStream(LongStream.range(0, Long.MAX_VALUE).boxed()).share();
 
   @Override
   public Mono<String> one(String name) {
@@ -93,12 +97,27 @@ public class GreetingServiceImpl implements GreetingService {
 
   @Override
   public Flux<ServiceMessage> rawStream(ServiceMessage request) {
-    return Mono.fromCallable(
-            () ->
-                ServiceMessage.builder()
-                    .header(TIMESTAMP_KEY, "" + System.currentTimeMillis())
-                    .build())
+    Callable<ServiceMessage> callable =
+        () -> {
+          Builder builder = ServiceMessage.builder();
+          return builder.header(TIMESTAMP_KEY, "" + System.currentTimeMillis()).build();
+        };
+    return Mono.fromCallable(callable).subscribeOn(Schedulers.parallel()).repeat();
+  }
+
+  @Override
+  public Flux<Long> broadcastStream() {
+    return source.subscribeOn(Schedulers.parallel()).map(i -> System.currentTimeMillis());
+  }
+
+  @Override
+  public Flux<ServiceMessage> rawBroadcastStream() {
+    return source
         .subscribeOn(Schedulers.parallel())
-        .repeat();
+        .map(
+            i ->
+                ServiceMessage.builder()
+                    .header(TIMESTAMP_KEY, Long.toString(System.currentTimeMillis()))
+                    .build());
   }
 }

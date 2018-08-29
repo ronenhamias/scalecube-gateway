@@ -44,12 +44,12 @@ public final class WebsocketSession {
    * @param outbound - Websocket outbound
    */
   public WebsocketSession(
-    HttpServerRequest httpRequest, WebsocketInbound inbound, WebsocketOutbound outbound) {
+      HttpServerRequest httpRequest, WebsocketInbound inbound, WebsocketOutbound outbound) {
     this.id = Integer.toHexString(System.identityHashCode(this));
 
     HttpHeaders httpHeaders = httpRequest.requestHeaders();
     this.contentType =
-      Optional.ofNullable(httpHeaders.get(CONTENT_TYPE)).orElse(DEFAULT_CONTENT_TYPE);
+        Optional.ofNullable(httpHeaders.get(CONTENT_TYPE)).orElse(DEFAULT_CONTENT_TYPE);
 
     this.inbound = inbound;
     this.outbound = (WebsocketOutbound) outbound.options(NettyPipeline.SendOptions::flushOnEach);
@@ -65,14 +65,25 @@ public final class WebsocketSession {
     return contentType;
   }
 
+  /**
+   * Method for receiving request messages coming a form of websocket frames.
+   *
+   * @return flux websocket frame
+   */
   public Flux<WebSocketFrame> receive() {
     return inbound.aggregateFrames().receiveFrames().map(WebSocketFrame::retain).log(">> RECEIVE");
   }
 
+  /**
+   * Method for send replies which taken in a form of publisher of byte buffers.
+   *
+   * @param publisher byte buf publisher
+   * @return mono void
+   */
   public Mono<Void> send(Publisher<ByteBuf> publisher) {
     return outbound
-      .sendObject(Flux.from(publisher).map(TextWebSocketFrame::new).log("<< SEND"))
-      .then();
+        .sendObject(Flux.from(publisher).map(TextWebSocketFrame::new).log("<< SEND"))
+        .then();
   }
 
   /**
@@ -80,18 +91,31 @@ public final class WebsocketSession {
    * href="https://tools.ietf.org/html/rfc6455#section-7.4.1">Defined Status Codes:</a> <i>1000
    * indicates a normal closure, meaning that the purpose for which the connection was established
    * has been fulfilled.</i>
+   *
+   * @return mono void
    */
   public Mono<Void> close() {
     return outbound
-      .sendObject(new CloseWebSocketFrame(STATUS_CODE_NORMAL_CLOSE, "close"))
-      .then()
-      .log("<< CLOSE");
+        .sendObject(new CloseWebSocketFrame(STATUS_CODE_NORMAL_CLOSE, "close"))
+        .then()
+        .log("<< CLOSE");
   }
 
+  /**
+   * Lambda setter for reacting on channel close occurence.
+   *
+   * @param runnable lambda
+   */
   public void onClose(Runnable runnable) {
     inbound.context().onClose(runnable);
   }
 
+  /**
+   * Disposing stored subscription by given stream id.
+   *
+   * @param streamId stream id
+   * @return true of subscription was disposed
+   */
   public boolean dispose(Long streamId) {
     boolean result = false;
     if (streamId != null) {
@@ -109,6 +133,14 @@ public final class WebsocketSession {
     return streamId != null && subscriptions.containsKey(streamId);
   }
 
+  /**
+   * Saves (if not already saved) by stream id a subscrption of service call coming in form of
+   * {@link Disposable} reference.
+   *
+   * @param streamId stream id
+   * @param serviceSubscription service subscrption
+   * @return true if disposable subscrption was stored
+   */
   public boolean register(Long streamId, Disposable serviceSubscription) {
     boolean result = subscriptions.putIfAbsent(streamId, serviceSubscription) == null;
     if (result) {
@@ -121,7 +153,7 @@ public final class WebsocketSession {
     if (!subscriptions.isEmpty()) {
       LOGGER.info("Clear all {} subscriptions on session: {}", subscriptions.size(), this);
     }
-    subscriptions.forEach(($, disposable) -> disposable.dispose());
+    subscriptions.forEach((sid, disposable) -> disposable.dispose());
     subscriptions.clear();
   }
 

@@ -1,5 +1,6 @@
 package io.scalecube.gateway;
 
+import com.codahale.metrics.MetricRegistry;
 import io.scalecube.gateway.clientsdk.Client;
 import io.scalecube.gateway.clientsdk.ClientSettings;
 import io.scalecube.gateway.clientsdk.codec.ClientMessageCodec;
@@ -34,7 +35,8 @@ public abstract class AbstractGatewayExtention
   public AbstractGatewayExtention(Object serviceInstance, GatewayConfig gatewayConfig) {
     this.gatewayConfig = gatewayConfig;
     this.serviceInstance = serviceInstance;
-    this.seed = Microservices.builder().gateway(gatewayConfig).startAwait();
+    this.seed =
+        Microservices.builder().gateway(gatewayConfig).metrics(new MetricRegistry()).startAwait();
   }
 
   @Override
@@ -67,10 +69,10 @@ public abstract class AbstractGatewayExtention
 
   public void startServices() {
     this.services =
-      Microservices.builder()
-        .seeds(seed.discovery().address())
-        .services(serviceInstance)
-        .startAwait();
+        Microservices.builder()
+            .seeds(seed.discovery().address())
+            .services(serviceInstance)
+            .startAwait();
     LOGGER.info("Started services {} on {}", services, services.serviceAddress());
   }
 
@@ -95,21 +97,21 @@ public abstract class AbstractGatewayExtention
   }
 
   protected abstract RSocketClientTransport transport(
-    ClientSettings settings, ClientMessageCodec codec);
+      ClientSettings settings, ClientMessageCodec codec);
 
   protected abstract String gatewayAliasName();
 
   private Client initClient() {
     ClientSettings settings =
-      ClientSettings.builder()
-        .host(gatewayAddress.getHostName())
-        .port(gatewayAddress.getPort())
-        .build();
+        ClientSettings.builder()
+            .host(gatewayAddress.getHostName())
+            .port(gatewayAddress.getPort())
+            .build();
 
     ClientMessageCodec codec =
-      new ClientMessageCodec(
-        HeadersCodec.getInstance(settings.contentType()),
-        DataCodec.getInstance(settings.contentType()));
+        new ClientMessageCodec(
+            HeadersCodec.getInstance(settings.contentType()),
+            DataCodec.getInstance(settings.contentType()));
 
     return new Client(transport(settings, codec), codec);
   }

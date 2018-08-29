@@ -23,12 +23,12 @@ public class GatewayRunner {
   private static final List<String> DEFAULT_SEEDS = Collections.singletonList("localhost:4802");
 
   /**
-   * Main method of gateway runner.
+   * Main runner.
    *
    * @param args program arguments
-   * @throws InterruptedException interrupted exception
+   * @throws Exception exception thrown
    */
-  public static void main(String[] args) throws InterruptedException {
+  public static void main(String[] args) throws Exception {
     ConfigRegistry configRegistry = GatewayConfigRegistry.configRegistry();
     MetricRegistry metrics = initMetricRegistry();
 
@@ -41,8 +41,8 @@ public class GatewayRunner {
 
     Microservices.builder()
         .seeds(seeds)
-      .gateway(GatewayConfig.builder("ws", WebsocketGateway.class).port(7070).build())
-      .gateway(GatewayConfig.builder("http", HttpGateway.class).port(8080).build())
+        .gateway(GatewayConfig.builder("ws", WebsocketGateway.class).port(7070).build())
+        .gateway(GatewayConfig.builder("http", HttpGateway.class).port(8080).build())
         .gateway(GatewayConfig.builder("rsws", RSocketWebsocketGateway.class).port(9090).build())
         .metrics(metrics)
         .startAwait();
