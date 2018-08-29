@@ -53,4 +53,10 @@ public interface GreetingService {
 
   @ServiceMethod("rawStream")
   Flux<ServiceMessage> rawStream(ServiceMessage request);
+
+  @ServiceMethod("broadcastStream")
+  Flux<Long> broadcastStream();
+
+  @ServiceMethod("rawBroadcastStream")
+  Flux<ServiceMessage> rawBroadcastStream();
 }

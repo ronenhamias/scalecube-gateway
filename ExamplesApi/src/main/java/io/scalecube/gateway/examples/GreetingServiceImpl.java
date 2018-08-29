@@ -11,6 +11,13 @@ import reactor.core.scheduler.Schedulers;
 
 public class GreetingServiceImpl implements GreetingService {
 
+  private Flux<Integer> source =
+      Flux.just(1)
+          .repeat()
+          .subscribeOn(Schedulers.newParallel("service-source"))
+          .publish()
+          .autoConnect();
+
   @Override
   public Mono<String> one(String name) {
     return Mono.just("Echo:" + name);
@@ -101,5 +108,19 @@ public class GreetingServiceImpl implements GreetingService {
           return builder.header(TIMESTAMP_KEY, "" + System.currentTimeMillis()).build();
         };
     return Mono.fromCallable(callable).subscribeOn(Schedulers.parallel()).repeat();
+  }
+
+  @Override
+  public Flux<Long> broadcastStream() {
+    return source.map(i -> System.currentTimeMillis());
+  }
+
+  @Override
+  public Flux<ServiceMessage> rawBroadcastStream() {
+    return source.map(
+        i ->
+            ServiceMessage.builder()
+                .header(TIMESTAMP_KEY, Long.toString(System.currentTimeMillis()))
+                .build());
   }
 }
