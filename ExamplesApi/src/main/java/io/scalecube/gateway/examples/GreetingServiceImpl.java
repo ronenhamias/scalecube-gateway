@@ -11,8 +11,7 @@ import reactor.core.scheduler.Schedulers;
 
 public class GreetingServiceImpl implements GreetingService {
 
-  private Flux<Long> source =
-      Flux.fromStream(LongStream.range(0, Long.MAX_VALUE).boxed()).publish().autoConnect();
+  private Flux<Long> source = Flux.fromStream(LongStream.range(0, Long.MAX_VALUE).boxed()).share();
 
   @Override
   public Mono<String> one(String name) {
