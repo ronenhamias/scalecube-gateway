@@ -3,7 +3,6 @@ package io.scalecube.gateway.clientsdk.rsocket;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.codahale.metrics.MetricRegistry;
 import io.scalecube.gateway.clientsdk.Client;
 import io.scalecube.gateway.clientsdk.ClientMessage;
 import io.scalecube.gateway.clientsdk.ClientSettings;
@@ -48,7 +47,6 @@ class RSocketClientSdkTest {
         Microservices.builder()
             .services(new GreetingServiceImpl())
             .gateway(gatewayConfig)
-            .metrics(new MetricRegistry())
             .startAwait();
 
     clientLoopResources = LoopResources.create("eventLoop");
