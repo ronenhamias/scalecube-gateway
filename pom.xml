@@ -316,7 +316,7 @@
               <configuration>
                 <buildArgs>
                   <EXECUTABLE_JAR>${project.build.finalName}</EXECUTABLE_JAR>
-                  <SERVICE_NAME>${project.artifactId}</SERVICE_NAME>
+                  <SERVICE_NAME>${serviceName}</SERVICE_NAME>
                 </buildArgs>
                 <tag>latest</tag>
               </configuration>
