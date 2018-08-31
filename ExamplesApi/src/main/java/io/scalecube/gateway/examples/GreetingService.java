@@ -15,6 +15,9 @@ public interface GreetingService {
   @ServiceMethod("one")
   Mono<String> one(String name);
 
+  @ServiceMethod("oneMessage")
+  Mono<ServiceMessage> oneMessage(ServiceMessage request);
+
   @ServiceMethod("many")
   Flux<String> many(String name);
 
@@ -50,6 +53,9 @@ public interface GreetingService {
 
   @ServiceMethod("requestInfiniteStream")
   Flux<Long> requestInfiniteStream(StreamRequest request);
+
+  @ServiceMethod("requestInfiniteMessageStream")
+  Flux<ServiceMessage> requestInfiniteMessageStream(ServiceMessage request);
 
   @ServiceMethod("rawStream")
   Flux<ServiceMessage> rawStream(ServiceMessage request);

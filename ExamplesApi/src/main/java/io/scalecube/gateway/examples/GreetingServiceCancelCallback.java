@@ -19,6 +19,11 @@ public class GreetingServiceCancelCallback implements GreetingService {
   }
 
   @Override
+  public Mono<ServiceMessage> oneMessage(ServiceMessage request) {
+    return greetingService.oneMessage(request).doOnCancel(onCancel);
+  }
+
+  @Override
   public Flux<Long> manyStream(Long cnt) {
     return greetingService.manyStream(cnt).doOnCancel(onCancel);
   }
@@ -76,6 +81,11 @@ public class GreetingServiceCancelCallback implements GreetingService {
   @Override
   public Flux<Long> requestInfiniteStream(StreamRequest request) {
     return greetingService.requestInfiniteStream(request).doOnCancel(onCancel);
+  }
+
+  @Override
+  public Flux<ServiceMessage> requestInfiniteMessageStream(ServiceMessage request) {
+    return greetingService.requestInfiniteMessageStream(request).doOnCancel(onCancel);
   }
 
   @Override

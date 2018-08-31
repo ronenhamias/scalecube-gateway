@@ -11,11 +11,24 @@ import reactor.core.scheduler.Schedulers;
 
 public class GreetingServiceImpl implements GreetingService {
 
+  private static final String SERVICE_RECEIVED_TIME_HEADER = "srv-recd-time";
+
   private Flux<Long> source = Flux.fromStream(LongStream.range(0, Long.MAX_VALUE).boxed()).share();
 
   @Override
   public Mono<String> one(String name) {
     return Mono.just("Echo:" + name);
+  }
+
+  @Override
+  public Mono<ServiceMessage> oneMessage(ServiceMessage request) {
+    return Mono.defer(
+        () ->
+            Mono.just(
+                ServiceMessage.from(request)
+                    .header(
+                        SERVICE_RECEIVED_TIME_HEADER, String.valueOf(System.currentTimeMillis()))
+                    .build()));
   }
 
   @Override
@@ -96,6 +109,24 @@ public class GreetingServiceImpl implements GreetingService {
   }
 
   @Override
+  public Flux<ServiceMessage> requestInfiniteMessageStream(ServiceMessage request) {
+    return Flux.defer(
+        () -> {
+          Duration interval =
+              Duration.ofMillis(Long.parseLong(request.header("executionTaskInterval")));
+          int messagesPerInterval =
+              Integer.parseInt(request.header("messagesPerExecutionInterval"));
+
+          Flux<Flux<ServiceMessage>> fluxes =
+              Flux.interval(interval).map(tick -> emitServiceMessages(messagesPerInterval));
+
+          return Flux.concat(fluxes)
+              .publishOn(Schedulers.parallel(), Integer.MAX_VALUE)
+              .onBackpressureDrop();
+        });
+  }
+
+  @Override
   public Flux<ServiceMessage> rawStream(ServiceMessage request) {
     Callable<ServiceMessage> callable =
         () -> {
@@ -119,5 +150,19 @@ public class GreetingServiceImpl implements GreetingService {
                 ServiceMessage.builder()
                     .header(TIMESTAMP_KEY, Long.toString(System.currentTimeMillis()))
                     .build());
+  }
+
+  private Flux<ServiceMessage> emitServiceMessages(int messagesPerInterval) {
+    return Flux.create(
+        fluxSink -> {
+          for (int i = 0; i < messagesPerInterval; i++) {
+            fluxSink.next(
+                ServiceMessage.builder()
+                    .header(
+                        SERVICE_RECEIVED_TIME_HEADER, String.valueOf(System.currentTimeMillis()))
+                    .build());
+          }
+          fluxSink.complete();
+        });
   }
 }
