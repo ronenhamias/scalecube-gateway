@@ -4,25 +4,22 @@ import io.scalecube.config.ConfigRegistry;
 import io.scalecube.gateway.config.GatewayConfigRegistry;
 import io.scalecube.services.Microservices;
 import io.scalecube.transport.Address;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Runner for example services.
- */
 public class ExamplesRunner {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExamplesRunner.class);
-  private static final String DECORATOR = "***********************************************************************";
+  private static final String DECORATOR =
+      "***********************************************************************";
 
   /**
-   * Main method of runner for example services.
-   * 
-   * @param args - program arguments.
-   * @throws InterruptedException - thrown if was interrupted.
+   * Main method of gateway runner.
+   *
+   * @param args program arguments
+   * @throws Exception exception thrown
    */
-  public static void main(String[] args) throws InterruptedException {
+  public static void main(String[] args) throws Exception {
     ConfigRegistry configRegistry = GatewayConfigRegistry.configRegistry();
 
     ExamplesConfig config =
@@ -33,10 +30,10 @@ public class ExamplesRunner {
     LOGGER.info(DECORATOR);
 
     int servicePort = config.getServicePort();
-    Address seedAddress = Address.from(config.getSeedAddress());
+    Address[] seeds = config.getSeedAddress().stream().map(Address::from).toArray(Address[]::new);
 
     Microservices.builder()
-        .seeds(seedAddress)
+        .seeds(seeds)
         .servicePort(servicePort)
         .services(new GreetingServiceImpl())
         .startAwait();
