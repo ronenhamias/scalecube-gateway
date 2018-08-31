@@ -1,6 +1,7 @@
 package io.scalecube.gateway.examples;
 
 import io.scalecube.config.ConfigRegistry;
+import io.scalecube.gateway.benchmarks.BenchmarksServiceImpl;
 import io.scalecube.gateway.config.GatewayConfigRegistry;
 import io.scalecube.services.Microservices;
 import io.scalecube.transport.Address;
@@ -35,7 +36,7 @@ public class ExamplesRunner {
     Microservices.builder()
         .seeds(seeds)
         .servicePort(servicePort)
-        .services(new GreetingServiceImpl())
+        .services(new BenchmarksServiceImpl())
         .startAwait();
 
     Thread.currentThread().join();

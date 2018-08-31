@@ -9,30 +9,21 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>scalecube-gateway-benchmarks</artifactId>
+  <artifactId>scalecube-examples-runner</artifactId>
+
+  <properties>
+    <mainClass>io.scalecube.gateway.examples.ExamplesRunner</mainClass>
+  </properties>
 
   <dependencies>
     <dependency>
       <groupId>io.scalecube</groupId>
-      <artifactId>scalecube-benchmarks-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.scalecube</groupId>
-      <artifactId>scalecube-benchmarks-log4j2</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.scalecube</groupId>
-      <artifactId>scalecube-gateway-websocket</artifactId>
+      <artifactId>scalecube-gateway-config</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>io.scalecube</groupId>
-      <artifactId>scalecube-gateway-rsocket-websocket</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.scalecube</groupId>
-      <artifactId>scalecube-gateway-clientsdk</artifactId>
+      <artifactId>scalecube-gateway-logger</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -42,15 +33,19 @@
     </dependency>
     <dependency>
       <groupId>io.scalecube</groupId>
+      <artifactId>scalecube-services</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.scalecube</groupId>
       <artifactId>rsocket-services-transport</artifactId>
     </dependency>
     <dependency>
       <groupId>io.scalecube</groupId>
-      <artifactId>scalecube-services-discovery</artifactId>
+      <artifactId>scalecube-services-jackson</artifactId>
     </dependency>
     <dependency>
       <groupId>io.scalecube</groupId>
-      <artifactId>scalecube-services-jackson</artifactId>
+      <artifactId>scalecube-services-discovery</artifactId>
     </dependency>
   </dependencies>
 

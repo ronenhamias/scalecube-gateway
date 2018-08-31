@@ -46,7 +46,6 @@
     <module>Config</module>
     <module>Websocket</module>
     <module>Http</module>
-    <module>ExamplesApi</module>
     <module>Examples</module>
     <module>GatewayRunner</module>
     <module>RSocketWebsocket</module>
@@ -54,6 +53,7 @@
     <module>Tests</module>
     <module>Benchmarks</module>
     <module>GatewayCommon</module>
+    <module>ExamplesRunner</module>
   </modules>
 
   <dependencies>

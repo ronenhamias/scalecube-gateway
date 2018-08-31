@@ -1,9 +1,6 @@
 package io.scalecube.gateway.examples;
 
-import io.scalecube.services.api.ServiceMessage;
-import io.scalecube.services.api.ServiceMessage.Builder;
 import java.time.Duration;
-import java.util.concurrent.Callable;
 import java.util.stream.LongStream;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -76,48 +73,5 @@ public class GreetingServiceImpl implements GreetingService {
   @Override
   public Flux<String> delayMany(String name) {
     return Flux.interval(Duration.ofMillis(500), Duration.ofSeconds(2)).map(i -> name);
-  }
-
-  @Override
-  public Flux<Long> requestInfiniteStream(StreamRequest request) {
-    Flux<Flux<Long>> fluxes =
-        Flux.interval(Duration.ofMillis(request.getIntervalMillis()))
-            .map(
-                tick ->
-                    Flux.create(
-                        s -> {
-                          for (int i = 0; i < request.getMessagesPerInterval(); i++) {
-                            s.next(System.currentTimeMillis());
-                          }
-                          s.complete();
-                        }));
-
-    return Flux.concat(fluxes).publishOn(Schedulers.parallel()).onBackpressureDrop();
-  }
-
-  @Override
-  public Flux<ServiceMessage> rawStream(ServiceMessage request) {
-    Callable<ServiceMessage> callable =
-        () -> {
-          Builder builder = ServiceMessage.builder();
-          return builder.header(TIMESTAMP_KEY, "" + System.currentTimeMillis()).build();
-        };
-    return Mono.fromCallable(callable).subscribeOn(Schedulers.parallel()).repeat();
-  }
-
-  @Override
-  public Flux<Long> broadcastStream() {
-    return source.subscribeOn(Schedulers.parallel()).map(i -> System.currentTimeMillis());
-  }
-
-  @Override
-  public Flux<ServiceMessage> rawBroadcastStream() {
-    return source
-        .subscribeOn(Schedulers.parallel())
-        .map(
-            i ->
-                ServiceMessage.builder()
-                    .header(TIMESTAMP_KEY, Long.toString(System.currentTimeMillis()))
-                    .build());
   }
 }

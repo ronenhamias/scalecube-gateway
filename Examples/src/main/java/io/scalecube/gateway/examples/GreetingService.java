@@ -2,7 +2,6 @@ package io.scalecube.gateway.examples;
 
 import io.scalecube.services.annotations.Service;
 import io.scalecube.services.annotations.ServiceMethod;
-import io.scalecube.services.api.ServiceMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -47,16 +46,4 @@ public interface GreetingService {
 
   @ServiceMethod("delay/many")
   Flux<String> delayMany(String name);
-
-  @ServiceMethod("requestInfiniteStream")
-  Flux<Long> requestInfiniteStream(StreamRequest request);
-
-  @ServiceMethod("rawStream")
-  Flux<ServiceMessage> rawStream(ServiceMessage request);
-
-  @ServiceMethod("broadcastStream")
-  Flux<Long> broadcastStream();
-
-  @ServiceMethod("rawBroadcastStream")
-  Flux<ServiceMessage> rawBroadcastStream();
 }
