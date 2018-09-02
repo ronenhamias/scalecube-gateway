@@ -1,18 +1,19 @@
 package io.scalecube.gateway.benchmarks;
 
+import static io.scalecube.gateway.benchmarks.BenchmarksService.TIMESTAMP_KEY;
+
 import io.scalecube.benchmarks.BenchmarksSettings;
 import io.scalecube.benchmarks.metrics.BenchmarksTimer;
-import io.scalecube.benchmarks.metrics.BenchmarksTimer.Context;
 import io.scalecube.gateway.clientsdk.ClientMessage;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-public final class RequestOneBenchmark {
+public final class BroadcastStreamBenchmark {
 
-  public static final String QUALIFIER = "/benchmarks/one";
+  public static final String QUALIFIER = "/benchmarks/broadcastStream";
 
-  private RequestOneBenchmark() {
+  private BroadcastStreamBenchmark() {
     // Do not instantiate
   }
 
@@ -29,7 +30,7 @@ public final class RequestOneBenchmark {
     BenchmarksSettings settings =
         BenchmarksSettings.from(args)
             .injectors(Runtime.getRuntime().availableProcessors())
-            .messageRate((int) 100e3)
+            .messageRate(1) // workaround
             .warmUpDuration(Duration.ofSeconds(30))
             .rampUpDuration(Duration.ofSeconds(10))
             .executionTaskDuration(Duration.ofSeconds(900))
@@ -44,11 +45,17 @@ public final class RequestOneBenchmark {
         state -> {
           BenchmarksTimer timer = state.timer("timer-total");
 
-          return (executionTick, client) -> {
-            Context timeContext = timer.time();
-            ClientMessage request = ClientMessage.builder().qualifier(QUALIFIER).build();
-            return client.requestResponse(request).doOnTerminate(timeContext::stop);
-          };
+          ClientMessage request = ClientMessage.builder().qualifier(QUALIFIER).build();
+
+          return (executionTick, client) ->
+              client
+                  .requestStream(request)
+                  .doOnNext(
+                      message -> {
+                        long timestamp = Long.parseLong(message.headers().get(TIMESTAMP_KEY));
+                        long total = System.currentTimeMillis() - timestamp;
+                        timer.update(total, TimeUnit.MILLISECONDS);
+                      });
         },
         (state, client) -> client.close());
   }
