@@ -1,8 +1,8 @@
-package io.scalecube.gateway.benchmarks.rsocket.remote;
+package io.scalecube.gateway.benchmarks.rsocket.standalone;
 
 import io.scalecube.gateway.benchmarks.RequestOneBenchmark;
 
-public class RemoteRequestOneBenchmark {
+public class StandaloneRequestOneBenchmark {
 
   /**
    * Main runner.
@@ -10,6 +10,6 @@ public class RemoteRequestOneBenchmark {
    * @param args program arguments
    */
   public static void main(String[] args) {
-    RequestOneBenchmark.runWith(args, RemoteBenchmarksState::new);
+    RequestOneBenchmark.runWith(args, StandaloneMicrobenchmarkState::new);
   }
 }
