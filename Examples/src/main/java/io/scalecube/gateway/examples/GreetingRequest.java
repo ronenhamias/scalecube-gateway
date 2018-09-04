@@ -6,12 +6,13 @@ public class GreetingRequest {
 
   public GreetingRequest() {}
 
-  public GreetingRequest(String text) {
-    this.text = text;
-  }
-
   public String getText() {
     return text;
+  }
+
+  public GreetingRequest setText(String text) {
+    this.text = text;
+    return this;
   }
 
   @Override

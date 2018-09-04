@@ -2,12 +2,13 @@ package io.scalecube.gateway.examples;
 
 import io.scalecube.services.annotations.Service;
 import io.scalecube.services.annotations.ServiceMethod;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-@Service("greeting")
+@Service(GreetingService.NAMESPACE)
 public interface GreetingService {
+
+  String NAMESPACE = "greeting";
 
   @ServiceMethod("one")
   Mono<String> one(String name);
@@ -16,7 +17,7 @@ public interface GreetingService {
   Flux<String> many(String name);
 
   @ServiceMethod("manyStream")
-  Flux<Integer> manyStream(Integer cnt);
+  Flux<Long> manyStream(Long cnt);
 
   @ServiceMethod("failing/one")
   Mono<String> failingOne(String name);

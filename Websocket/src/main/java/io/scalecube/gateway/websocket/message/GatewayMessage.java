@@ -1,7 +1,6 @@
 package io.scalecube.gateway.websocket.message;
 
 import io.scalecube.services.api.ServiceMessage;
-
 import java.util.Objects;
 
 public class GatewayMessage {
@@ -58,10 +57,34 @@ public class GatewayMessage {
     return builder;
   }
 
+  GatewayMessage() {}
+
+  private GatewayMessage(
+      String qualifier, Long streamId, Integer signal, Object data, Integer inactivity) {
+    this.qualifier = qualifier;
+    this.streamId = streamId;
+    this.signal = signal;
+    this.data = data;
+    this.inactivity = inactivity;
+  }
+
+  public static GatewayMessage toGatewayMessage(ServiceMessage serviceMessage) {
+    return from(serviceMessage).build();
+  }
+
+  public ServiceMessage toServiceMessage() {
+    return toServiceMessage(this);
+  }
+
+  /**
+   * {@link GatewayMessage} to {@link ServiceMessage} converter.
+   *
+   * @param gatewayMessage gateway message
+   * @return service message
+   */
   public static ServiceMessage toServiceMessage(GatewayMessage gatewayMessage) {
-    ServiceMessage.Builder builder = ServiceMessage.builder()
-        .qualifier(gatewayMessage.qualifier())
-        .data(gatewayMessage.data());
+    ServiceMessage.Builder builder =
+        ServiceMessage.builder().qualifier(gatewayMessage.qualifier()).data(gatewayMessage.data());
     if (gatewayMessage.streamId() != null) {
       builder.header(STREAM_ID_FIELD, String.valueOf(gatewayMessage.streamId()));
     }
@@ -72,20 +95,6 @@ public class GatewayMessage {
       builder.header(INACTIVITY_FIELD, String.valueOf(gatewayMessage.inactivity()));
     }
     return builder.build();
-  }
-
-  public static GatewayMessage toGatewayMessage(ServiceMessage serviceMessage) {
-    return from(serviceMessage).build();
-  }
-
-  GatewayMessage() {}
-
-  private GatewayMessage(String qualifier, Long streamId, Integer signal, Object data, Integer inactivity) {
-    this.qualifier = qualifier;
-    this.streamId = streamId;
-    this.signal = signal;
-    this.data = data;
-    this.inactivity = inactivity;
   }
 
   public static Builder builder() {
@@ -115,10 +124,6 @@ public class GatewayMessage {
 
   public boolean hasSignal(Signal signal) {
     return this.signal != null && this.signal == signal.code();
-  }
-
-  public ServiceMessage toServiceMessage() {
-    return toServiceMessage(this);
   }
 
   @Override
