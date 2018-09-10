@@ -6,7 +6,7 @@ import java.util.Map;
 
 public final class ClientMessage {
 
-  public static final String QUALIFIER = "q";
+  private static final String QUALIFIER = "q";
   private Map<String, String> headers;
   private Object data;
 

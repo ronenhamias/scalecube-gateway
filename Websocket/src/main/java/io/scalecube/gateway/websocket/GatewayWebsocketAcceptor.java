@@ -49,12 +49,8 @@ public class GatewayWebsocketAcceptor
   @Override
   public Publisher<Void> apply(HttpServerRequest httpRequest, HttpServerResponse httpResponse) {
     return httpResponse.sendWebsocket(
-        (WebsocketInbound inbound, WebsocketOutbound outbound) -> {
-          WebsocketSession session = new WebsocketSession(httpRequest, inbound, outbound);
-          Mono<Void> voidMono = onConnect(session);
-          session.onClose(() -> onDisconnect(session));
-          return voidMono;
-        });
+        (WebsocketInbound inbound, WebsocketOutbound outbound) ->
+            onConnect(new WebsocketSession(httpRequest, inbound, outbound)));
   }
 
   private Mono<Void> onConnect(WebsocketSession session) {
@@ -65,70 +61,12 @@ public class GatewayWebsocketAcceptor
         session.send(
             session
                 .receive()
-                .flatMap(
-                    frame ->
-                        Flux.<GatewayMessage>create(
-                            sink -> {
-                              Long sid = null;
-                              try {
-                                GatewayMessage request = toGatewayMessage(frame);
-                                Long streamId = sid = request.streamId();
-
-                                // check message contains sid
-                                checkSidNotNull(streamId, session, request);
-                                // check session contains sid for CANCEL operation
-                                if (request.hasSignal(Signal.CANCEL)) {
-                                  handleCancelRequest(streamId, session, request, sink);
-                                  return;
-                                }
-                                // check session not yet contain sid
-                                checkSessionHasSid(streamId, session, request);
-                                // check message contains quailifier
-                                checkQualifierNotNull(session, request);
-
-                                metrics.markRequest();
-
-                                AtomicBoolean receivedErrorMessage = new AtomicBoolean(false);
-
-                                Flux<ServiceMessage> serviceStream =
-                                    serviceCall.requestMany(
-                                        GatewayMessage.toServiceMessage(request));
-
-                                if (request.inactivity() != null) {
-                                  serviceStream =
-                                      serviceStream.timeout(
-                                          Duration.ofMillis(request.inactivity()));
-                                }
-
-                                Disposable disposable =
-                                    serviceStream
-                                        .map(
-                                            message ->
-                                                prepareResponse(
-                                                    streamId, message, receivedErrorMessage))
-                                        .concatWith(
-                                            Flux.defer(
-                                                () ->
-                                                    prepareCompletion(
-                                                        streamId, receivedErrorMessage)))
-                                        .onErrorResume(t -> Mono.just(toErrorMessage(t, streamId)))
-                                        .doFinally(signalType -> session.dispose(streamId))
-                                        .subscribe(sink::next, sink::error, sink::complete);
-
-                                if (!disposable.isDisposed()) {
-                                  session.register(sid, disposable);
-                                }
-                              } catch (Throwable ex) {
-                                ReferenceCountUtil.safeRelease(frame);
-                                sink.next(toErrorMessage(ex, sid));
-                                sink.complete();
-                              }
-                            }))
+                .flatMap(frame -> handleFrame(session, frame))
                 .flatMap(this::toByteBuf)
                 .doOnError(
                     ex ->
                         LOGGER.error(
-                            "Unhandled exception occured: {}, " + "session: {} will be closed",
+                            "Unhandled exception occurred: {}, " + "session: {} will be closed",
                             ex,
                             session,
                             ex)));
@@ -140,6 +78,57 @@ public class GatewayWebsocketAcceptor
         });
 
     return voidMono.then();
+  }
+
+  private Flux<GatewayMessage> handleFrame(WebsocketSession session, WebSocketFrame frame) {
+    return Flux.create(
+        sink -> {
+          Long sid = null;
+          try {
+            GatewayMessage request = toGatewayMessage(frame);
+            Long streamId = sid = request.streamId();
+
+            // check message contains sid
+            checkSidNotNull(streamId, session, request);
+
+            // check session contains sid for CANCEL operation
+            if (request.hasSignal(Signal.CANCEL)) {
+              handleCancelRequest(streamId, session, request, sink);
+              return;
+            }
+
+            // check session doesn't contain sid yet
+            checkSidNotRegisteredYet(streamId, session, request);
+
+            // check message contains qualifier
+            checkQualifierNotNull(session, request);
+
+            metrics.markRequest();
+
+            AtomicBoolean receivedErrorMessage = new AtomicBoolean(false);
+
+            Flux<ServiceMessage> serviceStream =
+                serviceCall.requestMany(GatewayMessage.toServiceMessage(request));
+
+            if (request.inactivity() != null) {
+              serviceStream = serviceStream.timeout(Duration.ofMillis(request.inactivity()));
+            }
+
+            Disposable disposable =
+                serviceStream
+                    .map(message -> prepareResponse(streamId, message, receivedErrorMessage))
+                    .concatWith(Flux.defer(() -> prepareCompletion(streamId, receivedErrorMessage)))
+                    .onErrorResume(t -> Mono.just(toErrorMessage(t, streamId)))
+                    .doFinally(signalType -> session.dispose(streamId))
+                    .subscribe(sink::next, sink::error, sink::complete);
+
+            session.register(sid, disposable);
+          } catch (Throwable ex) {
+            ReferenceCountUtil.safeRelease(frame);
+            sink.next(toErrorMessage(ex, sid));
+            sink.complete();
+          }
+        });
   }
 
   private Mono<GatewayMessage> prepareCompletion(
@@ -161,18 +150,17 @@ public class GatewayWebsocketAcceptor
 
   private void checkQualifierNotNull(WebsocketSession session, GatewayMessage request) {
     if (request.qualifier() == null) {
-      LOGGER.error("Failed gateway request: {}, q is missing for session: {}", request, session);
-      throw new BadRequestException("q is missing");
+      LOGGER.error("Bad gateway request {} on session {}: qualifier is missing", request, session);
+      throw new BadRequestException("qualifier is missing");
     }
   }
 
-  private void checkSessionHasSid(Long streamId, WebsocketSession session, GatewayMessage request) {
+  private void checkSidNotRegisteredYet(
+      Long streamId, WebsocketSession session, GatewayMessage request) {
     if (session.containsSid(streamId)) {
       LOGGER.error(
-          "Failed gateway request: {}, " + "sid={} is already registered on session: {}",
-          request,
-          session);
-      throw new BadRequestException("sid=" + streamId + " is already registered on session");
+          "Bad gateway request {} on session {}: sid={} is already registered", request, session);
+      throw new BadRequestException("sid=" + streamId + " is already registered");
     }
   }
 
@@ -181,30 +169,22 @@ public class GatewayWebsocketAcceptor
       WebsocketSession session,
       GatewayMessage request,
       FluxSink<GatewayMessage> sink) {
+
     if (!session.dispose(streamId)) {
-      LOGGER.error(
-          "CANCEL failed for gateway request: {}, " + "sid={} is not contained in session: {}",
-          request,
-          streamId,
-          session);
-      throw new BadRequestException("sid=" + streamId + " is not contained in session");
+      LOGGER.error("CANCEL gateway request {} failed in session {}", request, streamId, session);
+      throw new BadRequestException("Failed CANCEL request");
     }
-    // send message with CAMCEL signal
-    sink.next(GatewayMessage.builder().streamId(streamId).signal(Signal.CANCEL).build());
+
+    // send message with CANCEL signal
+    sink.next(cancelResponse(streamId));
     sink.complete();
   }
 
   private void checkSidNotNull(Long streamId, WebsocketSession session, GatewayMessage request) {
     if (streamId == null) {
-      LOGGER.error(
-          "Invalid gateway request: {}, " + "sid is missing for session: {}", request, session);
+      LOGGER.error("Bad gateway request {} on session {}: sid is missing", request, session);
       throw new BadRequestException("sid is missing");
     }
-  }
-
-  private Mono<Void> onDisconnect(WebsocketSession session) {
-    LOGGER.info("Session disconnected: " + session);
-    return Mono.empty();
   }
 
   private Mono<ByteBuf> toByteBuf(GatewayMessage message) {
@@ -228,5 +208,9 @@ public class GatewayWebsocketAcceptor
   private GatewayMessage toErrorMessage(Throwable th, Long streamId) {
     ServiceMessage serviceMessage = ExceptionProcessor.toMessage(th);
     return GatewayMessage.from(serviceMessage).streamId(streamId).signal(Signal.ERROR).build();
+  }
+
+  private GatewayMessage cancelResponse(Long streamId) {
+    return GatewayMessage.builder().streamId(streamId).signal(Signal.CANCEL).build();
   }
 }

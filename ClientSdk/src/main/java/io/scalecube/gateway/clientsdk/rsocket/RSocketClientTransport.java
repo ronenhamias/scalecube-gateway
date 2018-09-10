@@ -5,10 +5,10 @@ import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.transport.netty.client.WebsocketClientTransport;
 import io.rsocket.util.ByteBufPayload;
+import io.scalecube.gateway.clientsdk.ClientCodec;
 import io.scalecube.gateway.clientsdk.ClientMessage;
 import io.scalecube.gateway.clientsdk.ClientSettings;
 import io.scalecube.gateway.clientsdk.ClientTransport;
-import io.scalecube.gateway.clientsdk.codec.ClientMessageCodec;
 import io.scalecube.gateway.clientsdk.exceptions.ConnectionClosedException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -30,22 +30,22 @@ public final class RSocketClientTransport implements ClientTransport {
               RSocketClientTransport.class, Mono.class, "rsocketMono");
 
   private final ClientSettings settings;
-  private final ClientMessageCodec messageCodec;
+  private final ClientCodec<Payload> codec;
   private final LoopResources loopResources;
 
-  private volatile Mono<RSocket> rsocketMono;
+  private volatile Mono<?> rsocketMono;
 
   /**
    * Constructor for client sdk rsocket transport.
    *
    * @param settings client settings.
-   * @param messageCodec client message codec.
+   * @param codec client message codec.
    * @param loopResources loop resources.
    */
   public RSocketClientTransport(
-      ClientSettings settings, ClientMessageCodec messageCodec, LoopResources loopResources) {
+      ClientSettings settings, ClientCodec<Payload> codec, LoopResources loopResources) {
     this.settings = settings;
-    this.messageCodec = messageCodec;
+    this.codec = codec;
     this.loopResources = loopResources;
   }
 
@@ -102,7 +102,7 @@ public final class RSocketClientTransport implements ClientTransport {
 
   private Mono<RSocket> getOrConnect() {
     // noinspection unchecked
-    return rSocketMonoUpdater.updateAndGet(this, this::getOrConnect0);
+    return Mono.defer(() -> rSocketMonoUpdater.updateAndGet(this, this::getOrConnect0));
   }
 
   private Mono<RSocket> getOrConnect0(Mono prev) {
@@ -155,12 +155,12 @@ public final class RSocketClientTransport implements ClientTransport {
         path);
   }
 
-  private Payload toPayload(ClientMessage message) {
-    return messageCodec.encodeAndTransform(message, ByteBufPayload::create);
+  private Payload toPayload(ClientMessage clientMessage) {
+    return codec.encode(clientMessage);
   }
 
   private ClientMessage toClientMessage(Payload payload) {
-    return messageCodec.decode(payload.sliceData(), payload.sliceMetadata());
+    return codec.decode(payload);
   }
 
   private ClientMessage enrichForSend(ClientMessage clientMessage) {

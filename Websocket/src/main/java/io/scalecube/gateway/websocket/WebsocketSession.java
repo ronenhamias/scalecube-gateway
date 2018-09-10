@@ -4,12 +4,13 @@ import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
-import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +72,11 @@ public final class WebsocketSession {
    * @return flux websocket frame
    */
   public Flux<WebSocketFrame> receive() {
-    return inbound.aggregateFrames().receiveFrames().map(WebSocketFrame::retain).log(">> RECEIVE");
+    return inbound
+        .aggregateFrames()
+        .receiveFrames()
+        .map(WebSocketFrame::retain)
+        .log(">> RECEIVE", Level.FINE);
   }
 
   /**
@@ -82,7 +87,7 @@ public final class WebsocketSession {
    */
   public Mono<Void> send(Publisher<ByteBuf> publisher) {
     return outbound
-        .sendObject(Flux.from(publisher).map(TextWebSocketFrame::new).log("<< SEND"))
+        .sendObject(Flux.from(publisher).map(BinaryWebSocketFrame::new).log("<< SEND", Level.FINE))
         .then();
   }
 
@@ -98,7 +103,7 @@ public final class WebsocketSession {
     return outbound
         .sendObject(new CloseWebSocketFrame(STATUS_CODE_NORMAL_CLOSE, "close"))
         .then()
-        .log("<< CLOSE");
+        .log("<< CLOSE", Level.FINE);
   }
 
   /**
@@ -122,7 +127,7 @@ public final class WebsocketSession {
       Disposable disposable = subscriptions.remove(streamId);
       result = disposable != null;
       if (result) {
-        LOGGER.debug("Dispose subscription by streamId: {} on session: {}", streamId, this);
+        LOGGER.debug("Dispose subscription by sid: {} on session: {}", streamId, this);
         disposable.dispose();
       }
     }
@@ -138,13 +143,16 @@ public final class WebsocketSession {
    * {@link Disposable} reference.
    *
    * @param streamId stream id
-   * @param serviceSubscription service subscrption
+   * @param disposable service subscrption
    * @return true if disposable subscrption was stored
    */
-  public boolean register(Long streamId, Disposable serviceSubscription) {
-    boolean result = subscriptions.putIfAbsent(streamId, serviceSubscription) == null;
+  public boolean register(Long streamId, Disposable disposable) {
+    boolean result = false;
+    if (!disposable.isDisposed()) {
+      result = subscriptions.putIfAbsent(streamId, disposable) == null;
+    }
     if (result) {
-      LOGGER.debug("Registered subscrption with streamId: {} on session: {}", streamId, this);
+      LOGGER.debug("Registered subscription with sid: {} on session: {}", streamId, this);
     }
     return result;
   }
@@ -160,7 +168,7 @@ public final class WebsocketSession {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder("WebsocketSession{");
-    sb.append(", id='").append(id).append('\'');
+    sb.append("id='").append(id).append('\'');
     sb.append(", contentType='").append(contentType).append('\'');
     sb.append('}');
     return sb.toString();

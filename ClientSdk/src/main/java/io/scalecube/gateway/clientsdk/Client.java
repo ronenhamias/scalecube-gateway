@@ -1,6 +1,5 @@
 package io.scalecube.gateway.clientsdk;
 
-import io.scalecube.gateway.clientsdk.codec.ClientMessageCodec;
 import io.scalecube.services.methods.MethodInfo;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -12,7 +11,7 @@ import reactor.core.publisher.Mono;
 public final class Client {
 
   private final ClientTransport transport;
-  private final ClientMessageCodec messageCodec;
+  private final ClientCodec codec;
 
   private final ConcurrentHashMap<Class<?>, ? super Object> proxyMap = new ConcurrentHashMap<>();
 
@@ -20,11 +19,11 @@ public final class Client {
    * Constructor for client.
    *
    * @param transport client transport
-   * @param messageCodec client message codec
+   * @param codec client message codec
    */
-  public Client(ClientTransport transport, ClientMessageCodec messageCodec) {
+  public Client(ClientTransport transport, ClientCodec codec) {
     this.transport = transport;
-    this.messageCodec = messageCodec;
+    this.codec = codec;
   }
 
   /**
@@ -53,7 +52,7 @@ public final class Client {
               return Proxy.newProxyInstance(
                   serviceClazz.getClassLoader(),
                   new Class[] {serviceClazz},
-                  new RemoteInvocationHandler(transport, methods, messageCodec));
+                  new RemoteInvocationHandler(transport, methods, codec));
             });
   }
 
