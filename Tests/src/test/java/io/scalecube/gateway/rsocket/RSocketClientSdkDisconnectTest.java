@@ -1,4 +1,4 @@
-package io.scalecube.gateway.clientsdk.rsocket;
+package io.scalecube.gateway.rsocket;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.StringEndsWith.endsWith;
@@ -6,9 +6,10 @@ import static org.hamcrest.core.StringStartsWith.startsWith;
 
 import io.scalecube.gateway.clientsdk.Client;
 import io.scalecube.gateway.clientsdk.ClientSettings;
-import io.scalecube.gateway.clientsdk.codec.ClientMessageCodec;
-import io.scalecube.gateway.clientsdk.codec.RSocketPayloadCodec;
+import io.scalecube.gateway.clientsdk.ClientCodec;
+import io.scalecube.gateway.clientsdk.rsocket.RSocketClientCodec;
 import io.scalecube.gateway.clientsdk.exceptions.ConnectionClosedException;
+import io.scalecube.gateway.clientsdk.rsocket.RSocketClientTransport;
 import io.scalecube.gateway.examples.GreetingService;
 import io.scalecube.gateway.examples.GreetingServiceImpl;
 import io.scalecube.gateway.rsocket.websocket.RSocketWebsocketGateway;
@@ -52,8 +53,8 @@ class RSocketClientSdkDisconnectTest {
         seed.gatewayAddress(GATEWAY_ALIAS_NAME, gatewayConfig.gatewayClass()).getPort();
     ClientSettings settings = ClientSettings.builder().port(gatewayPort).build();
 
-    ClientMessageCodec codec =
-        new RSocketPayloadCodec(
+    ClientCodec codec =
+        new RSocketClientCodec(
             HeadersCodec.getInstance(settings.contentType()),
             DataCodec.getInstance(settings.contentType()));
 
