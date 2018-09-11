@@ -6,7 +6,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
-import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,7 +16,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.ipc.netty.NettyPipeline;
+import reactor.ipc.netty.NettyPipeline.SendOptions;
 import reactor.ipc.netty.http.server.HttpServerRequest;
 import reactor.ipc.netty.http.websocket.WebsocketInbound;
 import reactor.ipc.netty.http.websocket.WebsocketOutbound;
@@ -53,7 +52,7 @@ public final class WebsocketSession {
         Optional.ofNullable(httpHeaders.get(CONTENT_TYPE)).orElse(DEFAULT_CONTENT_TYPE);
 
     this.inbound = inbound;
-    this.outbound = (WebsocketOutbound) outbound.options(NettyPipeline.SendOptions::flushOnEach);
+    this.outbound = (WebsocketOutbound) outbound.options(SendOptions::flushOnEach);
 
     inbound.context().onClose(this::clearSubscriptions);
   }
@@ -69,14 +68,10 @@ public final class WebsocketSession {
   /**
    * Method for receiving request messages coming a form of websocket frames.
    *
-   * @return flux websocket frame
+   * @return flux websocket {@link ByteBuf}
    */
-  public Flux<WebSocketFrame> receive() {
-    return inbound
-        .aggregateFrames()
-        .receiveFrames()
-        .map(WebSocketFrame::retain)
-        .log(">> RECEIVE", Level.FINE);
+  public Flux<ByteBuf> receive() {
+    return inbound.aggregateFrames().receive().map(ByteBuf::retain).log(">> RECEIVE", Level.FINE);
   }
 
   /**
