@@ -1,33 +1,36 @@
 package io.scalecube.gateway.benchmarks;
 
-import io.rsocket.Payload;
 import io.scalecube.benchmarks.BenchmarkSettings;
 import io.scalecube.benchmarks.BenchmarkState;
 import io.scalecube.gateway.clientsdk.Client;
-import io.scalecube.gateway.clientsdk.ClientCodec;
 import io.scalecube.gateway.clientsdk.ClientMessage;
-import io.scalecube.gateway.clientsdk.ClientSettings;
-import io.scalecube.gateway.clientsdk.ClientTransport;
-import io.scalecube.gateway.clientsdk.rsocket.RSocketClientCodec;
-import io.scalecube.gateway.clientsdk.rsocket.RSocketClientTransport;
-import io.scalecube.services.codec.DataCodec;
-import io.scalecube.services.codec.HeadersCodec;
+import io.scalecube.services.Microservices;
+import java.net.InetSocketAddress;
+import java.util.Map.Entry;
+import java.util.function.BiFunction;
 import reactor.core.publisher.Mono;
 import reactor.ipc.netty.resources.LoopResources;
 
 public abstract class AbstractBenchmarkState<T extends AbstractBenchmarkState<T>>
     extends BenchmarkState<T> {
 
-  private LoopResources loopResources;
+  public static final ClientMessage FIRST_REQUEST =
+      ClientMessage.builder().qualifier("/benchmarks/one").build();
 
-  public AbstractBenchmarkState(BenchmarkSettings settings) {
+  protected LoopResources loopResources;
+  protected BiFunction<InetSocketAddress, LoopResources, Client> clientBuilder;
+
+  public AbstractBenchmarkState(
+      BenchmarkSettings settings,
+      BiFunction<InetSocketAddress, LoopResources, Client> clientBuilder) {
     super(settings);
+    this.clientBuilder = clientBuilder;
   }
 
   @Override
   protected void beforeAll() throws Exception {
     super.beforeAll();
-    loopResources = LoopResources.create("worker", 1, true);
+    loopResources = LoopResources.create("worker-client-sdk", 1, true);
   }
 
   @Override
@@ -40,16 +43,34 @@ public abstract class AbstractBenchmarkState<T extends AbstractBenchmarkState<T>
 
   public abstract Mono<Client> createClient();
 
-  protected final Mono<Client> createClient(ClientSettings settings) {
-    HeadersCodec headersCodec = HeadersCodec.getInstance(settings.contentType());
-    DataCodec dataCodec = DataCodec.getInstance(settings.contentType());
-    ClientCodec<Payload> clientCodec = new RSocketClientCodec(headersCodec, dataCodec);
+  protected final Mono<Client> createClient(
+      Microservices gateway,
+      String gatewayName,
+      BiFunction<InetSocketAddress, LoopResources, Client> clientBuilder) {
+    return Mono.defer(() -> createClient(gatewayAddress(gateway, gatewayName), clientBuilder));
+  }
 
-    ClientTransport clientTransport =
-        new RSocketClientTransport(settings, clientCodec, loopResources);
-    Client client = new Client(clientTransport, clientCodec);
+  protected final Mono<Client> createClient(
+      InetSocketAddress gatewayAddress,
+      BiFunction<InetSocketAddress, LoopResources, Client> clientBuilder) {
+    return Mono.defer(
+        () -> {
+          Client client = clientBuilder.apply(gatewayAddress, loopResources);
+          return client.requestResponse(FIRST_REQUEST).then(Mono.just(client));
+        });
+  }
 
-    ClientMessage request = ClientMessage.builder().qualifier("/benchmarks/one").build();
-    return client.requestResponse(request).then(Mono.just(client));
+  private InetSocketAddress gatewayAddress(Microservices gateway, String gatewayName) {
+    return gateway
+        .gatewayAddresses()
+        .entrySet()
+        .stream()
+        .filter(entry -> entry.getKey().name().equals(gatewayName))
+        .map(Entry::getValue)
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    "Can't find address for gateway with name '" + gatewayName + "'"));
   }
 }
