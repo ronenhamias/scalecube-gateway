@@ -28,6 +28,7 @@ import io.scalecube.services.exceptions.MessageCodecException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +76,7 @@ public class GatewayMessageCodec {
             generator.writeRaw(":");
             generator.flush();
             byteBuf.writeBytes(dataBin);
+            ReferenceCountUtil.safeRelease(dataBin);
           }
         } else {
           generator.writeObjectField(DATA_FIELD, data);
@@ -84,6 +86,7 @@ public class GatewayMessageCodec {
       generator.writeEndObject();
     } catch (Throwable ex) {
       ReferenceCountUtil.safeRelease(byteBuf);
+      Optional.ofNullable(message.data()).ifPresent(ReferenceCountUtil::safeRelease);
       LOGGER.error("Failed to encode message: {}", message, ex);
       throw new MessageCodecException("Failed to encode message", ex);
     }
@@ -98,7 +101,7 @@ public class GatewayMessageCodec {
    * @throws MessageCodecException - in case of issues during deserialization.
    */
   public GatewayMessage decode(ByteBuf byteBuf) throws MessageCodecException {
-    try (InputStream stream = new ByteBufInputStream(byteBuf.slice())) {
+    try (InputStream stream = new ByteBufInputStream(byteBuf.slice(), true)) {
       JsonParser jp = jsonFactory.createParser(stream);
       GatewayMessage.Builder result = GatewayMessage.builder();
 
@@ -150,8 +153,6 @@ public class GatewayMessageCodec {
     } catch (Throwable ex) {
       LOGGER.error("Failed to decode message: {}", byteBuf.toString(Charset.defaultCharset()), ex);
       throw new MessageCodecException("Failed to decode message", ex);
-    } finally {
-      ReferenceCountUtil.safeRelease(byteBuf);
     }
   }
 
