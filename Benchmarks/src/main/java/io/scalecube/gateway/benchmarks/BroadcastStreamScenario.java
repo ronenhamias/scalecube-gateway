@@ -9,11 +9,11 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-public final class BroadcastStreamBenchmark {
+public final class BroadcastStreamScenario {
 
   public static final String QUALIFIER = "/benchmarks/broadcastStream";
 
-  private BroadcastStreamBenchmark() {
+  private BroadcastStreamScenario() {
     // Do not instantiate
   }
 
@@ -46,7 +46,7 @@ public final class BroadcastStreamBenchmark {
         (rampUpTick, state) -> state.createClient(),
         state -> {
           BenchmarkTimer timer = state.timer("latency.timer");
-          GatewayLatencyHelper latencyHelper = new GatewayLatencyHelper(state);
+          LatencyHelper latencyHelper = new LatencyHelper(state);
 
           ClientMessage request = ClientMessage.builder().qualifier(QUALIFIER).build();
 

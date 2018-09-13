@@ -1,11 +1,11 @@
-package io.scalecube.gateway.benchmarks.distributed.rsocket;
+package io.scalecube.gateway.benchmarks.standalone.http;
 
 import io.scalecube.gateway.benchmarks.RequestOneScenario;
-import io.scalecube.gateway.benchmarks.distributed.DistributedBenchmarkState;
+import io.scalecube.gateway.benchmarks.standalone.StandaloneBenchmarkState;
 import io.scalecube.gateway.clientsdk.Client;
 import io.scalecube.gateway.clientsdk.ClientSettings;
 
-public class DistributedRequestOneBenchmark {
+public class StandaloneRequestOneBenchmark {
 
   /**
    * Main runner.
@@ -16,11 +16,11 @@ public class DistributedRequestOneBenchmark {
     RequestOneScenario.runWith(
         args,
         benchmarkSettings ->
-            new DistributedBenchmarkState(
+            new StandaloneBenchmarkState(
                 benchmarkSettings,
-                "rsws",
+                "http",
                 (address, loopResources) ->
-                    Client.onRSocket(
+                    Client.onHttp(
                         ClientSettings.builder()
                             .address(address)
                             .loopResources(loopResources)

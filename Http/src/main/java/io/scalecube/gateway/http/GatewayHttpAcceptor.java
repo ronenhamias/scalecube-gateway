@@ -10,9 +10,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
-import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.util.ReferenceCountUtil;
+import io.scalecube.gateway.GatewayMetrics;
+import io.scalecube.gateway.ReferenceCountUtil;
 import io.scalecube.services.ServiceCall;
 import io.scalecube.services.api.ErrorData;
 import io.scalecube.services.api.Qualifier;
@@ -21,6 +21,7 @@ import io.scalecube.services.codec.DataCodec;
 import io.scalecube.services.exceptions.ExceptionProcessor;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -37,94 +38,115 @@ public class GatewayHttpAcceptor
   private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
 
   private final ServiceCall serviceCall;
+  private final GatewayMetrics metrics;
 
-  GatewayHttpAcceptor(ServiceCall serviceCall) {
+  GatewayHttpAcceptor(ServiceCall serviceCall, GatewayMetrics metrics) {
     this.serviceCall = serviceCall;
+    this.metrics = metrics;
   }
 
   @Override
-  public Publisher<Void> apply(
-      HttpServerRequest httpServerRequest, HttpServerResponse httpServerResponse) {
-    if (httpServerRequest.method() != POST) {
-      LOGGER.error("Unsupported HTTP method. Expected POST, actual {}", httpServerRequest.method());
-      return methodNotAllowed(httpServerResponse);
+  public Publisher<Void> apply(HttpServerRequest httpRequest, HttpServerResponse httpResponse) {
+    LOGGER.debug(
+        "Accepted request: {}, headers: {}, params: {}",
+        httpRequest,
+        httpRequest.requestHeaders(),
+        httpRequest.params());
+
+    if (httpRequest.method() != POST) {
+      LOGGER.error("Unsupported HTTP method. Expected POST, actual {}", httpRequest.method());
+      return methodNotAllowed(httpResponse);
     }
 
-    return httpServerRequest
-        .receiveContent()
-        .flatMap(
-            httpContent -> callService(httpServerRequest.uri(), httpContent, httpServerResponse))
+    return httpRequest
+        .receive()
+        .map(ByteBuf::retain)
+        .doOnNext(content -> metrics.markRequest())
+        .flatMap(content -> handleRequest(content, httpRequest, httpResponse))
+        .doOnComplete(metrics::markResponse)
         .timeout(DEFAULT_TIMEOUT)
-        .onErrorResume(throwable -> error(httpServerResponse, throwable));
+        .onErrorResume(t -> error(httpResponse, ExceptionProcessor.toMessage(t)));
   }
 
-  private Mono<Void> callService(
-      String qualifier, HttpContent httpContent, HttpServerResponse httpServerResponse) {
-    final ServiceMessage.Builder serviceMessage = ServiceMessage.builder().qualifier(qualifier);
-    try {
-      serviceMessage.data(httpContent.content().slice().retain());
-      return serviceCall
-          .requestOne(serviceMessage.build())
-          .switchIfEmpty(Mono.defer(() -> Mono.just(serviceMessage.data(null).build())))
-          .flatMap(message -> Mono.from(toHttpResponse(httpServerResponse, message)));
-    } catch (Exception e) {
-      ReferenceCountUtil.safeRelease(httpContent);
-      return Mono.error(e);
-    }
+  private Mono<Void> handleRequest(
+      ByteBuf content, HttpServerRequest httpRequest, HttpServerResponse httpResponse) {
+
+    ServiceMessage.Builder messageBuilder =
+        ServiceMessage.builder()
+            .header("gw-recv-from-client-time", String.valueOf(System.currentTimeMillis()))
+            .qualifier(httpRequest.uri());
+
+    return serviceCall
+        .requestOne(messageBuilder.data(content).build())
+        .switchIfEmpty(Mono.defer(() -> Mono.just(messageBuilder.data(null).build())))
+        .flatMap(
+            response -> {
+              enrichResponse(httpRequest, httpResponse, response);
+              return Mono.defer(
+                  () ->
+                      ExceptionProcessor.isError(response) // check error
+                          ? error(httpResponse, response)
+                          : response.hasData() // check data
+                              ? ok(httpResponse, response)
+                              : noContent(httpResponse));
+            });
   }
 
-  private Publisher<Void> toHttpResponse(
-      HttpServerResponse response, ServiceMessage serviceMessage) {
-    if (ExceptionProcessor.isError(serviceMessage)) {
-      return error(response, serviceMessage);
-    }
-
-    if (!serviceMessage.hasData()) {
-      return noContent(response);
-    }
-
-    return ok(response, serviceMessage.data());
+  private Publisher<Void> methodNotAllowed(HttpServerResponse httpResponse) {
+    return httpResponse.addHeader(ALLOW, POST.name()).status(METHOD_NOT_ALLOWED).send();
   }
 
-  private Publisher<Void> methodNotAllowed(HttpServerResponse response) {
-    return response.addHeader(ALLOW, POST.name()).status(METHOD_NOT_ALLOWED).send();
+  private Mono<Void> error(HttpServerResponse httpResponse, ServiceMessage response) {
+    int code = Integer.parseInt(Qualifier.getQualifierAction(response.qualifier()));
+    HttpResponseStatus status = HttpResponseStatus.valueOf(code);
+
+    ByteBuf content =
+        response.hasData(ErrorData.class)
+            ? encodeData(response.data(), response.dataFormatOrDefault())
+            : response.data();
+
+    return httpResponse.status(status).sendObject(content).then();
   }
 
-  private Publisher<Void> error(HttpServerResponse response, Throwable throwable) {
-    return error(response, ExceptionProcessor.toMessage(throwable));
+  private Mono<Void> noContent(HttpServerResponse httpResponse) {
+    return httpResponse.status(NO_CONTENT).send();
   }
 
-  private Publisher<Void> error(HttpServerResponse response, ServiceMessage serviceMessage) {
-    int code = Integer.parseInt(Qualifier.getQualifierAction(serviceMessage.qualifier()));
+  private Mono<Void> ok(HttpServerResponse httpResponse, ServiceMessage response) {
+    ByteBuf content =
+        response.hasData(ByteBuf.class)
+            ? response.data()
+            : encodeData(response.data(), response.dataFormatOrDefault());
 
-    ByteBuf body;
-    if (serviceMessage.hasData(ErrorData.class)) {
-      body = encodeErrorData(serviceMessage.data());
-    } else {
-      body = serviceMessage.data();
-    }
-
-    return response.status(HttpResponseStatus.valueOf(code)).sendObject(body);
+    return httpResponse.status(OK).sendObject(content).then();
   }
 
-  private ByteBuf encodeErrorData(ErrorData errorData) {
+  private ByteBuf encodeData(Object data, String dataFormat) {
     ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
+
     try {
-      DataCodec.getInstance("application/json").encode(new ByteBufOutputStream(byteBuf), errorData);
+      DataCodec.getInstance(dataFormat).encode(new ByteBufOutputStream(byteBuf), data);
     } catch (IOException e) {
-      ReferenceCountUtil.safeRelease(byteBuf);
-      LOGGER.error("Failed to encode data: {}", errorData, e);
+      ReferenceCountUtil.safestRelease(byteBuf);
+      LOGGER.error("Failed to encode data: {}", data, e);
       return Unpooled.EMPTY_BUFFER;
     }
 
     return byteBuf;
   }
 
-  private Publisher<Void> noContent(HttpServerResponse response) {
-    return response.status(NO_CONTENT).send();
-  }
+  private void enrichResponse(
+      HttpServerRequest httpRequest, HttpServerResponse httpResponse, ServiceMessage response) {
 
-  private Publisher<Void> ok(HttpServerResponse response, ByteBuf body) {
-    return response.status(OK).sendObject(body);
+    Optional.ofNullable(httpRequest.requestHeaders().get("client-send-time"))
+        .ifPresent(s -> httpResponse.header("client-send-time", s));
+
+    Optional.ofNullable(response.header("service-recv-time"))
+        .ifPresent(s -> httpResponse.header("service-recv-time", s));
+
+    Optional.ofNullable(response.header("gw-recv-from-client-time"))
+        .ifPresent(s -> httpResponse.header("gw-recv-from-client-time", s));
+
+    httpResponse.header("gw-recv-from-service-time", String.valueOf(System.currentTimeMillis()));
   }
 }

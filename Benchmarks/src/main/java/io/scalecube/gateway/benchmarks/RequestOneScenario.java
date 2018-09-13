@@ -4,16 +4,18 @@ import io.scalecube.benchmarks.BenchmarkSettings;
 import io.scalecube.benchmarks.metrics.BenchmarkTimer;
 import io.scalecube.benchmarks.metrics.BenchmarkTimer.Context;
 import io.scalecube.gateway.clientsdk.ClientMessage;
+import io.scalecube.gateway.clientsdk.ReferenceCountUtil;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import reactor.core.publisher.Mono;
 
-public final class RequestOneBenchmark {
+public final class RequestOneScenario {
 
   private static final String QUALIFIER = "/benchmarks/one";
 
-  private RequestOneBenchmark() {
+  private RequestOneScenario() {
     // Do not instantiate
   }
 
@@ -46,7 +48,7 @@ public final class RequestOneBenchmark {
         (rampUpTick, state) -> state.createClient(),
         state -> {
           BenchmarkTimer timer = state.timer("latency.timer");
-          GatewayLatencyHelper latencyHelper = new GatewayLatencyHelper(state);
+          LatencyHelper latencyHelper = new LatencyHelper(state);
 
           ClientMessage request = ClientMessage.builder().qualifier(QUALIFIER).build();
 
@@ -59,9 +61,11 @@ public final class RequestOneBenchmark {
                         return client
                             .requestResponse(request)
                             .doOnNext(
-                                msg -> {
+                                response -> {
+                                  Optional.ofNullable(response.data())
+                                      .ifPresent(ReferenceCountUtil::safestRelease);
                                   timeContext.stop();
-                                  latencyHelper.calculate(msg);
+                                  latencyHelper.calculate(response);
                                 })
                             .doOnTerminate(task::scheduleNow);
                       });
