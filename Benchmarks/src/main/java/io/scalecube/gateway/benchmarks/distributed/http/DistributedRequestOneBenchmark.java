@@ -1,4 +1,4 @@
-package io.scalecube.gateway.benchmarks.distributed.rsocket;
+package io.scalecube.gateway.benchmarks.distributed.http;
 
 import io.scalecube.gateway.benchmarks.RequestOneScenario;
 import io.scalecube.gateway.benchmarks.distributed.DistributedBenchmarkState;
@@ -18,9 +18,9 @@ public class DistributedRequestOneBenchmark {
         benchmarkSettings ->
             new DistributedBenchmarkState(
                 benchmarkSettings,
-                "rsws",
+                "http",
                 (address, loopResources) ->
-                    Client.onRSocket(
+                    Client.onHttp(
                         ClientSettings.builder()
                             .address(address)
                             .loopResources(loopResources)

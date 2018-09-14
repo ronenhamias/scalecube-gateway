@@ -55,11 +55,7 @@ public final class WebsocketClientTransport implements ClientTransport {
     httpClient =
         HttpClient.create(
             options ->
-                options
-                    .disablePool()
-                    .compression(false)
-                    .connectAddress(() -> address)
-                    .loopResources(loopResources));
+                options.disablePool().connectAddress(() -> address).loopResources(loopResources));
   }
 
   @Override
@@ -102,7 +98,8 @@ public final class WebsocketClientTransport implements ClientTransport {
         () -> {
           // noinspection unchecked
           Mono<WebsocketSession> curr = websocketMonoUpdater.get(this);
-          return curr == null ? Mono.empty() : curr.flatMap(WebsocketSession::close);
+          return (curr == null ? Mono.<Void>empty() : curr.flatMap(WebsocketSession::close))
+              .doOnTerminate(() -> LOGGER.info("Closed websocket client sdk transport"));
         });
   }
 

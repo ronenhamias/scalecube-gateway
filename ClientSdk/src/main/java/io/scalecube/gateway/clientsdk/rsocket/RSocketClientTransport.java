@@ -89,15 +89,14 @@ public final class RSocketClientTransport implements ClientTransport {
         () -> {
           // noinspection unchecked
           Mono<RSocket> curr = rSocketMonoUpdater.get(this);
-          if (curr == null) {
-            return Mono.empty();
-          }
-          return curr.flatMap(
-              rsocket -> {
-                rsocket.dispose();
-                return rsocket.onClose();
-              });
+          return (curr == null ? Mono.<Void>empty() : curr.flatMap(this::dispose))
+              .doOnTerminate(() -> LOGGER.info("Closed rsocket client sdk transport"));
         });
+  }
+
+  private Mono<? extends Void> dispose(RSocket rsocket) {
+    rsocket.dispose();
+    return rsocket.onClose();
   }
 
   private Mono<RSocket> getOrConnect() {
@@ -147,11 +146,7 @@ public final class RSocketClientTransport implements ClientTransport {
     return WebsocketClientTransport.create(
         HttpClient.create(
             options ->
-                options
-                    .disablePool()
-                    .compression(false)
-                    .connectAddress(() -> address)
-                    .loopResources(loopResources)),
+                options.disablePool().connectAddress(() -> address).loopResources(loopResources)),
         path);
   }
 
