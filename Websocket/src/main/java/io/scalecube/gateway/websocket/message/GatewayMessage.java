@@ -1,7 +1,9 @@
 package io.scalecube.gateway.websocket.message;
 
 import io.scalecube.services.api.ServiceMessage;
-import java.util.Objects;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class GatewayMessage {
 
@@ -11,11 +13,12 @@ public class GatewayMessage {
   public static final String DATA_FIELD = "d";
   public static final String INACTIVITY_FIELD = "i";
 
-  private String qualifier;
-  private Long streamId;
-  private Integer signal;
-  private Object data;
-  private Integer inactivity;
+  private final Map<String, String> headers;
+  private final Object data;
+
+  public static Builder builder() {
+    return new Builder();
+  }
 
   /**
    * Get a builder by pattern form given {@link GatewayMessage}.
@@ -24,13 +27,7 @@ public class GatewayMessage {
    * @return builder with fields copied from given {@link GatewayMessage}
    */
   public static Builder from(GatewayMessage msg) {
-    Builder builder = new Builder();
-    builder.qualifier = msg.qualifier();
-    builder.streamId = msg.streamId();
-    builder.signal = msg.signal();
-    builder.inactivity = msg.inactivity();
-    builder.data = msg.data();
-    return builder;
+    return new Builder().headers(msg.headers).data(msg.data);
   }
 
   /**
@@ -41,31 +38,16 @@ public class GatewayMessage {
    */
   public static Builder from(ServiceMessage serviceMessage) {
     Builder builder = new Builder();
-    builder.qualifier = serviceMessage.qualifier();
     if (serviceMessage.hasData()) {
       builder.data = serviceMessage.data();
     }
-    if (serviceMessage.header(STREAM_ID_FIELD) != null) {
-      builder.streamId = Long.parseLong(serviceMessage.header(STREAM_ID_FIELD));
-    }
-    if (serviceMessage.header(SIGNAL_FIELD) != null) {
-      builder.signal = Integer.parseInt(serviceMessage.header(SIGNAL_FIELD));
-    }
-    if (serviceMessage.header(INACTIVITY_FIELD) != null) {
-      builder.inactivity = Integer.parseInt(serviceMessage.header(INACTIVITY_FIELD));
-    }
+    serviceMessage.headers().forEach(builder::header);
     return builder;
   }
 
-  GatewayMessage() {}
-
-  private GatewayMessage(
-      String qualifier, Long streamId, Integer signal, Object data, Integer inactivity) {
-    this.qualifier = qualifier;
-    this.streamId = streamId;
-    this.signal = signal;
-    this.data = data;
-    this.inactivity = inactivity;
+  private GatewayMessage(Builder builder) {
+    this.data = builder.data;
+    this.headers = Collections.unmodifiableMap(builder.headers);
   }
 
   public static GatewayMessage toGatewayMessage(ServiceMessage serviceMessage) {
@@ -84,33 +66,23 @@ public class GatewayMessage {
    */
   public static ServiceMessage toServiceMessage(GatewayMessage gatewayMessage) {
     ServiceMessage.Builder builder =
-        ServiceMessage.builder().qualifier(gatewayMessage.qualifier()).data(gatewayMessage.data());
-    if (gatewayMessage.streamId() != null) {
-      builder.header(STREAM_ID_FIELD, String.valueOf(gatewayMessage.streamId()));
-    }
-    if (gatewayMessage.signal() != null) {
-      builder.header(SIGNAL_FIELD, String.valueOf(gatewayMessage.signal()));
-    }
-    if (gatewayMessage.inactivity() != null) {
-      builder.header(INACTIVITY_FIELD, String.valueOf(gatewayMessage.inactivity()));
-    }
+        ServiceMessage.builder().qualifier(gatewayMessage.qualifier()).data(gatewayMessage.data);
+    gatewayMessage.headers.forEach(builder::header);
     return builder.build();
   }
 
-  public static Builder builder() {
-    return new Builder();
-  }
-
   public String qualifier() {
-    return qualifier;
+    return headers.get(QUALIFIER_FIELD);
   }
 
   public Long streamId() {
-    return streamId;
+    String value = headers.get(STREAM_ID_FIELD);
+    return value != null ? Long.parseLong(value) : null;
   }
 
   public Integer signal() {
-    return signal;
+    String value = headers.get(SIGNAL_FIELD);
+    return value != null ? Integer.valueOf(value) : null;
   }
 
   public <T> T data() {
@@ -119,62 +91,98 @@ public class GatewayMessage {
   }
 
   public Integer inactivity() {
-    return inactivity;
+    String value = headers.get(INACTIVITY_FIELD);
+    return value != null ? Integer.valueOf(value) : null;
   }
 
   public boolean hasSignal(Signal signal) {
-    return this.signal != null && this.signal == signal.code();
+    String value = headers.get(SIGNAL_FIELD);
+    return value != null && Integer.parseInt(value) == signal.code();
+  }
+
+  public Map<String, String> headers() {
+    return headers;
   }
 
   @Override
   public String toString() {
-    final StringBuilder sb = new StringBuilder("GatewayMessage{");
-    sb.append("qualifier='").append(qualifier).append('\'');
-    sb.append(", streamId=").append(streamId);
-    sb.append(", signal=").append(signal);
-    sb.append(", data=").append(data);
-    sb.append(", inactivity=").append(inactivity);
-    sb.append('}');
-    return sb.toString();
+    return new StringBuilder("GatewayMessage{")
+        .append("headers=")
+        .append(headers)
+        .append(", data=")
+        .append(data)
+        .append('}')
+        .toString();
   }
 
   public static class Builder {
 
-    private String qualifier;
-    private Long streamId;
-    private Integer signal;
+    private Map<String, String> headers = new HashMap<>();
     private Object data;
-    private Integer inactivity;
 
     Builder() {}
 
     public Builder qualifier(String qualifier) {
-      this.qualifier = qualifier;
-      return this;
+      return header(QUALIFIER_FIELD, qualifier);
     }
 
     public Builder streamId(Long streamId) {
-      this.streamId = streamId;
-      return this;
+      return header(STREAM_ID_FIELD, streamId);
     }
 
     public Builder signal(Integer signal) {
-      this.signal = signal;
-      return this;
+      return header(SIGNAL_FIELD, signal);
     }
 
     public Builder signal(Signal signal) {
-      this.signal = signal.code();
-      return this;
+      return signal(signal.code());
     }
 
     public Builder inactivity(Integer inactivity) {
-      this.inactivity = inactivity;
-      return this;
+      return header(INACTIVITY_FIELD, inactivity);
     }
 
     public Builder data(Object data) {
-      this.data = Objects.requireNonNull(data);
+      this.data = data;
+      return this;
+    }
+
+    /**
+     * Add a header.
+     *
+     * @param key header name
+     * @param value header value
+     * @return self
+     */
+    public Builder header(String key, String value) {
+      if (value != null) {
+        headers.put(key, value);
+      }
+      return this;
+    }
+
+    /**
+     * Add a header.
+     *
+     * @param key header name
+     * @param value header value
+     * @return self
+     */
+    public Builder header(String key, Object value) {
+      if (value != null) {
+        headers.put(key, value.toString());
+      }
+      return this;
+    }
+
+    /**
+     * Add all headers.
+     *
+     * @param headers given headers
+     * @return self
+     */
+    public Builder headers(Map<String, String> headers) {
+      this.headers.putAll(headers);
       return this;
     }
 
@@ -184,7 +192,7 @@ public class GatewayMessage {
      * @return {@link GatewayMessage} with parameters from current builder.
      */
     public GatewayMessage build() {
-      return new GatewayMessage(qualifier, streamId, signal, data, inactivity);
+      return new GatewayMessage(this);
     }
   }
 }
