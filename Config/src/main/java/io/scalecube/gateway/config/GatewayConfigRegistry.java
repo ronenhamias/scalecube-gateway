@@ -4,7 +4,6 @@ import io.scalecube.config.ConfigRegistry;
 import io.scalecube.config.ConfigRegistrySettings;
 import io.scalecube.config.audit.Slf4JConfigEventListener;
 import io.scalecube.config.source.ClassPathConfigSource;
-import io.scalecube.config.source.DirectoryConfigSource;
 import io.scalecube.config.source.SystemEnvironmentConfigSource;
 import io.scalecube.config.source.SystemPropertiesConfigSource;
 import java.nio.file.Path;
@@ -14,8 +13,7 @@ import java.util.regex.Pattern;
 public class GatewayConfigRegistry {
 
   private static final String JMX_MBEAN_NAME = "io.scalecube.gateway.config:name=ConfigRegistry";
-  private static final Pattern CONFIG_PATTERN =
-      Pattern.compile(".*[\\\\|/]?config[\\\\|/](.*)config(.*)?\\.properties");
+  private static final Pattern CONFIG_PATTERN = Pattern.compile("(.*)config(.*)?\\.properties");
   private static final Predicate<Path> PATH_PREDICATE =
       path -> CONFIG_PATTERN.matcher(path.toString()).matches();
 
@@ -28,7 +26,6 @@ public class GatewayConfigRegistry {
                 .addListener(new Slf4JConfigEventListener())
                 .addLastSource("sys_prop", new SystemPropertiesConfigSource())
                 .addLastSource("env_var", new SystemEnvironmentConfigSource())
-                .addLastSource("dir", new DirectoryConfigSource("config", PATH_PREDICATE))
                 .addLastSource("cp", new ClassPathConfigSource(PATH_PREDICATE))
                 .jmxMBeanName(JMX_MBEAN_NAME)
                 .build());

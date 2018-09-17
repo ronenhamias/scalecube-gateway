@@ -2,8 +2,6 @@ package io.scalecube.gateway.websocket.message;
 
 import static com.fasterxml.jackson.core.JsonToken.VALUE_NULL;
 import static io.scalecube.gateway.websocket.message.GatewayMessage.DATA_FIELD;
-import static io.scalecube.gateway.websocket.message.GatewayMessage.INACTIVITY_FIELD;
-import static io.scalecube.gateway.websocket.message.GatewayMessage.QUALIFIER_FIELD;
 import static io.scalecube.gateway.websocket.message.GatewayMessage.SIGNAL_FIELD;
 import static io.scalecube.gateway.websocket.message.GatewayMessage.STREAM_ID_FIELD;
 
@@ -23,11 +21,13 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
-import io.netty.util.ReferenceCountUtil;
+import io.scalecube.gateway.ReferenceCountUtil;
 import io.scalecube.services.exceptions.MessageCodecException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.util.Map.Entry;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,18 +51,15 @@ public class GatewayMessageCodec {
             (OutputStream) new ByteBufOutputStream(byteBuf), JsonEncoding.UTF8)) {
       generator.writeStartObject();
 
-      if (message.qualifier() != null) {
-        generator.writeStringField(QUALIFIER_FIELD, message.qualifier());
-      }
-      if (message.streamId() != null) {
-        generator.writeNumberField(STREAM_ID_FIELD, message.streamId());
-      }
-      if (message.signal() != null) {
-        generator.writeNumberField(SIGNAL_FIELD, message.signal());
-      }
-
-      if (message.inactivity() != null) {
-        generator.writeNumberField(INACTIVITY_FIELD, message.inactivity());
+      // headers
+      for (Entry<String, String> header : message.headers().entrySet()) {
+        String fieldName = header.getKey();
+        String value = header.getValue();
+        if (STREAM_ID_FIELD.equals(fieldName) || SIGNAL_FIELD.equals(fieldName)) {
+          generator.writeNumberField(fieldName, Long.parseLong(value));
+        } else {
+          generator.writeStringField(fieldName, value);
+        }
       }
 
       // data
@@ -75,6 +72,7 @@ public class GatewayMessageCodec {
             generator.writeRaw(":");
             generator.flush();
             byteBuf.writeBytes(dataBin);
+            ReferenceCountUtil.safestRelease(dataBin);
           }
         } else {
           generator.writeObjectField(DATA_FIELD, data);
@@ -83,7 +81,8 @@ public class GatewayMessageCodec {
 
       generator.writeEndObject();
     } catch (Throwable ex) {
-      ReferenceCountUtil.safeRelease(byteBuf);
+      ReferenceCountUtil.safestRelease(byteBuf);
+      Optional.ofNullable(message.data()).ifPresent(ReferenceCountUtil::safestRelease);
       LOGGER.error("Failed to encode message: {}", message, ex);
       throw new MessageCodecException("Failed to encode message", ex);
     }
@@ -98,7 +97,7 @@ public class GatewayMessageCodec {
    * @throws MessageCodecException - in case of issues during deserialization.
    */
   public GatewayMessage decode(ByteBuf byteBuf) throws MessageCodecException {
-    try (InputStream stream = new ByteBufInputStream(byteBuf.slice())) {
+    try (InputStream stream = new ByteBufInputStream(byteBuf.slice(), true)) {
       JsonParser jp = jsonFactory.createParser(stream);
       GatewayMessage.Builder result = GatewayMessage.builder();
 
@@ -115,36 +114,23 @@ public class GatewayMessageCodec {
         if (current == VALUE_NULL) {
           continue;
         }
-        switch (fieldName) {
-          case QUALIFIER_FIELD:
-            result.qualifier(jp.getValueAsString());
-            break;
-          case STREAM_ID_FIELD:
-            result.streamId(jp.getValueAsLong());
-            break;
-          case SIGNAL_FIELD:
-            result.signal(jp.getValueAsInt());
-            break;
-          case INACTIVITY_FIELD:
-            result.inactivity(jp.getValueAsInt());
-            break;
-          case DATA_FIELD:
-            dataStart = jp.getTokenLocation().getByteOffset();
-            if (current.isScalarValue()) {
-              if (!current.isNumeric() && !current.isBoolean()) {
-                jp.getValueAsString();
-              }
-            } else if (current.isStructStart()) {
-              jp.skipChildren();
+
+        if (fieldName.equals(DATA_FIELD)) {
+          dataStart = jp.getTokenLocation().getByteOffset();
+          if (current.isScalarValue()) {
+            if (!current.isNumeric() && !current.isBoolean()) {
+              jp.getValueAsString();
             }
-            dataEnd = jp.getCurrentLocation().getByteOffset();
-            break;
-          default:
-            break;
+          } else if (current.isStructStart()) {
+            jp.skipChildren();
+          }
+          dataEnd = jp.getCurrentLocation().getByteOffset();
+        } else {
+          result.header(fieldName, jp.getValueAsString());
         }
       }
       if (dataEnd > dataStart) {
-        result.data(byteBuf.slice((int) dataStart, (int) (dataEnd - dataStart)));
+        result.data(byteBuf.copy((int) dataStart, (int) (dataEnd - dataStart)));
       }
       return result.build();
     } catch (Throwable ex) {

@@ -19,6 +19,7 @@ public class BenchmarksServiceImpl implements BenchmarksService {
             Mono.just(
                 ServiceMessage.from(message)
                     .header(SERVICE_RECV_TIME, String.valueOf(System.currentTimeMillis()))
+                    .data("hello")
                     .build()));
   }
 
@@ -35,7 +36,7 @@ public class BenchmarksServiceImpl implements BenchmarksService {
                 .subscribeOn(Schedulers.parallel())
                 .map(
                     i ->
-                        ServiceMessage.builder()
+                        ServiceMessage.from(message)
                             .header(SERVICE_RECV_TIME, String.valueOf(System.currentTimeMillis()))
                             .build()));
   }
@@ -46,7 +47,7 @@ public class BenchmarksServiceImpl implements BenchmarksService {
         () -> {
           Callable<ServiceMessage> callable =
               () ->
-                  ServiceMessage.builder()
+                  ServiceMessage.from(message)
                       .header(SERVICE_RECV_TIME, Long.toString(System.currentTimeMillis()))
                       .build();
           return Mono.fromCallable(callable).subscribeOn(Schedulers.parallel()).repeat();

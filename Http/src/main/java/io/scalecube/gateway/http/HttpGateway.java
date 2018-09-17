@@ -1,6 +1,7 @@
 package io.scalecube.gateway.http;
 
 import io.netty.util.concurrent.DefaultThreadFactory;
+import io.scalecube.gateway.GatewayMetrics;
 import io.scalecube.gateway.GatewayTemplate;
 import io.scalecube.services.ServiceCall;
 import io.scalecube.services.gateway.GatewayConfig;
@@ -13,8 +14,6 @@ import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
-import reactor.ipc.netty.http.server.HttpServer;
-import reactor.ipc.netty.resources.LoopResources;
 import reactor.ipc.netty.tcp.BlockingNettyContext;
 
 public class HttpGateway extends GatewayTemplate {
@@ -40,23 +39,15 @@ public class HttpGateway extends GatewayTemplate {
         () -> {
           LOGGER.info("Starting gateway with {}", config);
 
-          InetSocketAddress listenAddress = new InetSocketAddress(config.port());
-
-          LoopResources loopResources =
-              prepareLoopResources(preferNative, BOSS_THREAD_FACTORY, config, workerThreadPool);
-
-          GatewayHttpAcceptor httpAcceptor = new GatewayHttpAcceptor(call.create());
+          GatewayMetrics gatewayMetrics = new GatewayMetrics(config.name(), metrics);
+          GatewayHttpAcceptor httpAcceptor = new GatewayHttpAcceptor(call.create(), gatewayMetrics);
 
           server =
-              HttpServer.builder()
-                  .options(
-                      opts -> {
-                        opts.listenAddress(listenAddress);
-                        if (loopResources != null) {
-                          opts.loopResources(loopResources);
-                        }
-                      })
-                  .build()
+              prepareHttpServer(
+                      prepareLoopResources(
+                          preferNative, BOSS_THREAD_FACTORY, config, workerThreadPool),
+                      gatewayMetrics,
+                      config.port())
                   .start(httpAcceptor, START_TIMEOUT);
 
           InetSocketAddress address = server.getContext().address();

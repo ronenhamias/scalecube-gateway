@@ -1,25 +1,29 @@
 package io.scalecube.gateway.rsocket;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
+import io.rsocket.exceptions.ApplicationErrorException;
+import io.scalecube.gateway.examples.GreetingRequest;
+import io.scalecube.gateway.examples.GreetingResponse;
 import io.scalecube.gateway.examples.GreetingService;
 import io.scalecube.gateway.examples.GreetingServiceImpl;
+import io.scalecube.services.exceptions.InternalServiceException;
 import java.time.Duration;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class RSocketWebsocketGatewayTest {
+class RSocketWebsocketGatewayTest {
 
   private static final Duration TIMEOUT = Duration.ofSeconds(3);
 
   @RegisterExtension
   static RsocketGatewayExtension extension = new RsocketGatewayExtension(new GreetingServiceImpl());
 
-  private static GreetingService service;
+  private GreetingService service;
 
   @BeforeEach
   void initService() {
@@ -27,56 +31,101 @@ public class RSocketWebsocketGatewayTest {
   }
 
   @Test
-  public void shouldReturnSingleResponse() {
-    String req = "hello";
-    String expected = "Echo:" + req;
-
-    Mono<String> result = service.one(req);
-
-    StepVerifier.create(result)
-        .assertNext(resp -> assertEquals(expected, resp))
+  void shouldReturnSingleResponse() {
+    StepVerifier.create(service.one("hello"))
+        .expectNext("Echo:hello")
         .expectComplete()
         .verify(TIMEOUT);
   }
 
   @Test
-  public void shouldReturnManyResponses() {
-    Flux<Long> result = service.manyStream(5L);
-
-    StepVerifier.create(result)
-        .assertNext(next -> assertEquals(0, (long) next))
-        .expectNextCount(4)
+  void shouldReturnSingleResponseWithSimpleLongDataRequest() {
+    String data = new String(new char[500]);
+    StepVerifier.create(service.one(data))
+        .expectNext("Echo:" + data)
         .expectComplete()
         .verify(TIMEOUT);
   }
 
   @Test
-  public void shouldReturnExceptionWhenQualifierIsWrong() {
+  void shouldReturnSingleResponseWithPojoRequest() {
+    StepVerifier.create(service.pojoOne(new GreetingRequest("hello")))
+        .expectNextMatches(response -> "Echo:hello".equals(response.getText()))
+        .expectComplete()
+        .verify(TIMEOUT);
+  }
+
+  @Test
+  void shouldReturnManyResponses() {
+    int expectedResponseNum = 3;
+    List<String> expected =
+        IntStream.range(0, expectedResponseNum)
+            .mapToObj(i -> "Greeting (" + i + ") to: hello")
+            .collect(Collectors.toList());
+
+    StepVerifier.create(service.many("hello").take(expectedResponseNum))
+        .expectNextSequence(expected)
+        .expectComplete()
+        .verify(TIMEOUT);
+  }
+
+  @Test
+  void shouldReturnManyResponsesWithPojoRequest() {
+    int expectedResponseNum = 3;
+    List<GreetingResponse> expected =
+        IntStream.range(0, expectedResponseNum)
+            .mapToObj(i -> new GreetingResponse("Greeting (" + i + ") to: hello"))
+            .collect(Collectors.toList());
+
+    StepVerifier.create(service.pojoMany(new GreetingRequest("hello")).take(expectedResponseNum))
+        .expectNextSequence(expected)
+        .expectComplete()
+        .verify(TIMEOUT);
+  }
+
+  @Test
+  void shouldReturnExceptionWhenServiceIsDown() {
     extension.shutdownServices();
-    Mono<String> result = service.one("hello");
-    StepVerifier.create(result)
+
+    StepVerifier.create(service.one("hello"))
         .expectErrorMatches(
-            throwable -> throwable.getMessage().startsWith("No reachable member with such service"))
+            throwable ->
+                throwable instanceof ApplicationErrorException
+                    && throwable.getMessage().startsWith("No reachable member with such service"))
         .verify(TIMEOUT);
-    extension.startServices();
   }
 
   @Test
-  public void shouldReturnErrorDataWhenServiceFails() {
+  void shouldReturnErrorDataWhenServiceFails() {
     String req = "hello";
     Mono<String> result = service.failingOne(req);
 
-    StepVerifier.create(result).expectErrorMatches(t -> t.getMessage().equals(req)).verify(TIMEOUT);
+    StepVerifier.create(result)
+        .expectErrorMatches(throwable -> throwable instanceof InternalServiceException)
+        .verify(TIMEOUT);
   }
 
   @Test
-  public void shouldReturnErrorDataWhenRequestDataIsEmpty() {
+  void shouldReturnErrorDataWhenRequestDataIsEmpty() {
     Mono<String> result = service.one(null);
     StepVerifier.create(result)
         .expectErrorMatches(
-            t ->
+            throwable ->
                 "Expected service request data of type: class java.lang.String, but received: null"
-                    .equals(t.getMessage()))
+                    .equals(throwable.getMessage()))
+        .verify(TIMEOUT);
+  }
+
+  @Test
+  void shouldSuccessfullyReuseServiceProxy() {
+    StepVerifier.create(service.one("hello"))
+        .expectNext("Echo:hello")
+        .expectComplete()
+        .verify(TIMEOUT);
+
+    StepVerifier.create(service.one("hello"))
+        .expectNext("Echo:hello")
+        .expectComplete()
         .verify(TIMEOUT);
   }
 }

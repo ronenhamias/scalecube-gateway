@@ -11,16 +11,19 @@ import io.scalecube.services.Microservices;
 import io.scalecube.services.gateway.GatewayConfig;
 import io.scalecube.transport.Address;
 import java.io.File;
-import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class GatewayRunner {
 
-  private static final String REPORTER_PATH = "reports/gw/metrics";
+  private static final Logger LOGGER = LoggerFactory.getLogger(GatewayRunner.class);
+  private static final String DECORATOR =
+      "#######################################################################";
 
-  private static final String SEEDS = "SEEDS";
-  private static final List<String> DEFAULT_SEEDS = Collections.singletonList("localhost:4802");
+  private static final String REPORTER_PATH = "reports/gw/metrics";
 
   /**
    * Main runner.
@@ -30,17 +33,28 @@ public class GatewayRunner {
    */
   public static void main(String[] args) throws Exception {
     ConfigRegistry configRegistry = GatewayConfigRegistry.configRegistry();
+
+    Config config =
+        configRegistry
+            .objectProperty("io.scalecube.gateway", Config.class)
+            .value()
+            .orElseThrow(() -> new IllegalStateException("Couldn't load config"));
+
+    LOGGER.info(DECORATOR);
+    LOGGER.info("Starting Gateway on {}", config);
+    LOGGER.info(DECORATOR);
+
     MetricRegistry metrics = initMetricRegistry();
 
-    final Address[] seeds =
-        configRegistry
-            .stringListValue(SEEDS, DEFAULT_SEEDS)
-            .stream()
-            .map(Address::from)
-            .toArray(Address[]::new);
-
     Microservices.builder()
-        .seeds(seeds)
+        .discovery(
+            options ->
+                options
+                    .seeds(config.seedAddresses())
+                    .port(config.discoveryPort())
+                    .memberHost(config.memberHost())
+                    .memberPort(config.memberPort()))
+        .servicePort(config.servicePort())
         .gateway(GatewayConfig.builder("ws", WebsocketGateway.class).port(7070).build())
         .gateway(GatewayConfig.builder("http", HttpGateway.class).port(8080).build())
         .gateway(GatewayConfig.builder("rsws", RSocketWebsocketGateway.class).port(9090).build())
@@ -65,5 +79,57 @@ public class GatewayRunner {
 
     csvReporter.start(10, TimeUnit.SECONDS);
     return metrics;
+  }
+
+  public static class Config {
+
+    private int servicePort;
+    private int discoveryPort;
+    private List<String> seeds;
+    private String memberHost;
+    private Integer memberPort;
+
+    public int servicePort() {
+      return servicePort;
+    }
+
+    public int discoveryPort() {
+      return discoveryPort;
+    }
+
+    public List<String> seeds() {
+      return seeds;
+    }
+
+    /**
+     * Returns seeds as an {@link Address}'s array.
+     *
+     * @return {@link Address}'s array
+     */
+    public Address[] seedAddresses() {
+      return Optional.ofNullable(seeds())
+          .map(seeds -> seeds.stream().map(Address::from).toArray(Address[]::new))
+          .orElse(new Address[0]);
+    }
+
+    public String memberHost() {
+      return memberHost;
+    }
+
+    public Integer memberPort() {
+      return memberPort;
+    }
+
+    @Override
+    public String toString() {
+      final StringBuilder sb = new StringBuilder("Config{");
+      sb.append("servicePort=").append(servicePort);
+      sb.append(", discoveryPort=").append(discoveryPort);
+      sb.append(", seeds=").append(seeds);
+      sb.append(", memberHost=").append(memberHost);
+      sb.append(", memberPort=").append(memberPort);
+      sb.append('}');
+      return sb.toString();
+    }
   }
 }

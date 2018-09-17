@@ -1,6 +1,13 @@
 package io.scalecube.gateway.clientsdk;
 
-import io.scalecube.gateway.clientsdk.codec.ClientMessageCodec;
+import io.scalecube.gateway.clientsdk.http.HttpClientCodec;
+import io.scalecube.gateway.clientsdk.http.HttpClientTransport;
+import io.scalecube.gateway.clientsdk.rsocket.RSocketClientCodec;
+import io.scalecube.gateway.clientsdk.rsocket.RSocketClientTransport;
+import io.scalecube.gateway.clientsdk.websocket.WebsocketClientCodec;
+import io.scalecube.gateway.clientsdk.websocket.WebsocketClientTransport;
+import io.scalecube.services.codec.DataCodec;
+import io.scalecube.services.codec.HeadersCodec;
 import io.scalecube.services.methods.MethodInfo;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -12,7 +19,7 @@ import reactor.core.publisher.Mono;
 public final class Client {
 
   private final ClientTransport transport;
-  private final ClientMessageCodec messageCodec;
+  private final ClientCodec codec;
 
   private final ConcurrentHashMap<Class<?>, ? super Object> proxyMap = new ConcurrentHashMap<>();
 
@@ -20,11 +27,61 @@ public final class Client {
    * Constructor for client.
    *
    * @param transport client transport
-   * @param messageCodec client message codec
+   * @param codec client message codec
    */
-  public Client(ClientTransport transport, ClientMessageCodec messageCodec) {
+  public Client(ClientTransport transport, ClientCodec codec) {
     this.transport = transport;
-    this.messageCodec = messageCodec;
+    this.codec = codec;
+  }
+
+  /**
+   * Client on rsocket client transport.
+   *
+   * @param clientSettings client settings
+   * @return client
+   */
+  public static Client onRSocket(ClientSettings clientSettings) {
+    RSocketClientCodec clientCodec =
+        new RSocketClientCodec(
+            HeadersCodec.getInstance(clientSettings.contentType()),
+            DataCodec.getInstance(clientSettings.contentType()));
+
+    RSocketClientTransport clientTransport =
+        new RSocketClientTransport(clientSettings, clientCodec, clientSettings.loopResources());
+
+    return new Client(clientTransport, clientCodec);
+  }
+
+  /**
+   * Client on websocket client transport.
+   *
+   * @param clientSettings client settings
+   * @return client
+   */
+  public static Client onWebsocket(ClientSettings clientSettings) {
+    WebsocketClientCodec clientCodec =
+        new WebsocketClientCodec(DataCodec.getInstance(clientSettings.contentType()));
+
+    WebsocketClientTransport clientTransport =
+        new WebsocketClientTransport(clientSettings, clientCodec, clientSettings.loopResources());
+
+    return new Client(clientTransport, clientCodec);
+  }
+
+  /**
+   * Client on http client transport.
+   *
+   * @param clientSettings client settings
+   * @return client
+   */
+  public static Client onHttp(ClientSettings clientSettings) {
+    HttpClientCodec clientCodec =
+        new HttpClientCodec(DataCodec.getInstance(clientSettings.contentType()));
+
+    ClientTransport clientTransport =
+        new HttpClientTransport(clientSettings, clientCodec, clientSettings.loopResources());
+
+    return new Client(clientTransport, clientCodec);
   }
 
   /**
@@ -53,7 +110,7 @@ public final class Client {
               return Proxy.newProxyInstance(
                   serviceClazz.getClassLoader(),
                   new Class[] {serviceClazz},
-                  new RemoteInvocationHandler(transport, methods, messageCodec));
+                  new RemoteInvocationHandler(transport, methods, codec));
             });
   }
 

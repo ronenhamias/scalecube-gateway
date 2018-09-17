@@ -1,9 +1,8 @@
 package io.scalecube.gateway.websocket;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.handler.codec.http.websocketx.WebSocketFrame;
-import io.netty.util.ReferenceCountUtil;
 import io.scalecube.gateway.GatewayMetrics;
+import io.scalecube.gateway.ReferenceCountUtil;
 import io.scalecube.gateway.websocket.message.GatewayMessage;
 import io.scalecube.gateway.websocket.message.GatewayMessageCodec;
 import io.scalecube.gateway.websocket.message.Signal;
@@ -12,6 +11,7 @@ import io.scalecube.services.api.ServiceMessage;
 import io.scalecube.services.exceptions.BadRequestException;
 import io.scalecube.services.exceptions.ExceptionProcessor;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import org.reactivestreams.Publisher;
@@ -49,94 +49,93 @@ public class GatewayWebsocketAcceptor
   @Override
   public Publisher<Void> apply(HttpServerRequest httpRequest, HttpServerResponse httpResponse) {
     return httpResponse.sendWebsocket(
-        (WebsocketInbound inbound, WebsocketOutbound outbound) -> {
-          WebsocketSession session = new WebsocketSession(httpRequest, inbound, outbound);
-          Mono<Void> voidMono = onConnect(session);
-          session.onClose(() -> onDisconnect(session));
-          return voidMono;
-        });
+        (WebsocketInbound inbound, WebsocketOutbound outbound) ->
+            onConnect(new WebsocketSession(httpRequest, inbound, outbound)));
   }
 
   private Mono<Void> onConnect(WebsocketSession session) {
     LOGGER.info("Session connected: " + session);
-    metrics.incConnection();
 
     Mono<Void> voidMono =
         session.send(
             session
                 .receive()
-                .flatMap(
-                    frame ->
-                        Flux.<GatewayMessage>create(
-                            sink -> {
-                              Long sid = null;
-                              try {
-                                GatewayMessage request = toGatewayMessage(frame);
-                                Long streamId = sid = request.streamId();
-
-                                // check message contains sid
-                                checkSidNotNull(streamId, session, request);
-                                // check session contains sid for CANCEL operation
-                                if (request.hasSignal(Signal.CANCEL)) {
-                                  handleCancelRequest(streamId, session, request, sink);
-                                  return;
-                                }
-                                // check session not yet contain sid
-                                checkSessionHasSid(streamId, session, request);
-                                // check message contains quailifier
-                                checkQualifierNotNull(session, request);
-
-                                metrics.markRequest();
-
-                                AtomicBoolean receivedErrorMessage = new AtomicBoolean(false);
-
-                                Flux<ServiceMessage> serviceStream =
-                                    serviceCall.requestMany(
-                                        GatewayMessage.toServiceMessage(request));
-
-                                if (request.inactivity() != null) {
-                                  serviceStream =
-                                      serviceStream.timeout(
-                                          Duration.ofMillis(request.inactivity()));
-                                }
-
-                                Disposable disposable =
-                                    serviceStream
-                                        .map(
-                                            message ->
-                                                prepareResponse(
-                                                    streamId, message, receivedErrorMessage))
-                                        .concatWith(
-                                            Flux.defer(
-                                                () ->
-                                                    prepareCompletion(
-                                                        streamId, receivedErrorMessage)))
-                                        .onErrorResume(t -> Mono.just(toErrorMessage(t, streamId)))
-                                        .doFinally(signalType -> session.dispose(streamId))
-                                        .subscribe(sink::next, sink::error, sink::complete);
-                                session.register(sid, disposable);
-                              } catch (Throwable ex) {
-                                ReferenceCountUtil.safeRelease(frame);
-                                sink.next(toErrorMessage(ex, sid));
-                                sink.complete();
-                              }
-                            }))
-                .flatMap(this::toByteBuf)
+                .doOnNext(input -> metrics.markRequest())
+                .flatMap(message -> handleMessage(session, message))
+                .doOnNext(input -> metrics.markResponse())
                 .doOnError(
                     ex ->
                         LOGGER.error(
-                            "Unhandled exception occured: {}, " + "session: {} will be closed",
+                            "Unhandled exception occurred: {}, session: {} will be closed",
                             ex,
                             session,
                             ex)));
 
-    session.onClose(
-        () -> {
-          LOGGER.info("Session disconnected: " + session);
-          metrics.decConnection();
-        });
+    session.onClose(() -> LOGGER.info("Session disconnected: " + session));
 
     return voidMono.then();
+  }
+
+  private Flux<ByteBuf> handleMessage(WebsocketSession session, ByteBuf message) {
+    return Flux.create(
+        sink -> {
+          Long sid = null;
+          GatewayMessage request = null;
+          try {
+            request = enrichFromClient(toMessage(message));
+            Long streamId = sid = request.streamId();
+
+            // check message contains sid
+            checkSidNotNull(streamId, session, request);
+
+            // check session contains sid for CANCEL operation
+            if (request.hasSignal(Signal.CANCEL)) {
+              handleCancelRequest(sink, streamId, session, request);
+              return;
+            }
+
+            // check session doesn't contain sid yet
+            checkSidNotRegisteredYet(streamId, session, request);
+
+            // check message contains qualifier
+            checkQualifierNotNull(session, request);
+
+            AtomicBoolean receivedErrorMessage = new AtomicBoolean(false);
+
+            Flux<ServiceMessage> serviceStream =
+                serviceCall
+                    .requestMany(GatewayMessage.toServiceMessage(request))
+                    .map(this::enrichFromService);
+
+            if (request.inactivity() != null) {
+              serviceStream = serviceStream.timeout(Duration.ofMillis(request.inactivity()));
+            }
+
+            Disposable disposable =
+                serviceStream
+                    .map(response -> prepareResponse(streamId, response, receivedErrorMessage))
+                    .concatWith(Flux.defer(() -> prepareCompletion(streamId, receivedErrorMessage)))
+                    .onErrorResume(t -> Mono.just(toErrorMessage(t, streamId)))
+                    .doFinally(signalType -> session.dispose(streamId))
+                    .subscribe(
+                        response -> {
+                          try {
+                            sink.next(toByteBuf(response));
+                          } catch (Throwable t) {
+                            LOGGER.error("Failed to encode response message: {}", response, t);
+                          }
+                        },
+                        sink::error,
+                        sink::complete);
+
+            session.register(sid, disposable);
+          } catch (Throwable e) {
+            Optional.ofNullable(request)
+                .map(GatewayMessage::data)
+                .ifPresent(ReferenceCountUtil::safestRelease);
+            handleError(sink, session, sid, e);
+          }
+        });
   }
 
   private Mono<GatewayMessage> prepareCompletion(
@@ -158,72 +157,86 @@ public class GatewayWebsocketAcceptor
 
   private void checkQualifierNotNull(WebsocketSession session, GatewayMessage request) {
     if (request.qualifier() == null) {
-      LOGGER.error("Failed gateway request: {}, q is missing for session: {}", request, session);
-      throw new BadRequestException("q is missing");
+      LOGGER.error("Bad gateway request {} on session {}: qualifier is missing", request, session);
+      throw new BadRequestException("qualifier is missing");
     }
   }
 
-  private void checkSessionHasSid(Long streamId, WebsocketSession session, GatewayMessage request) {
+  private void checkSidNotRegisteredYet(
+      Long streamId, WebsocketSession session, GatewayMessage request) {
     if (session.containsSid(streamId)) {
       LOGGER.error(
-          "Failed gateway request: {}, " + "sid={} is already registered on session: {}",
-          request,
-          session);
-      throw new BadRequestException("sid=" + streamId + " is already registered on session");
+          "Bad gateway request {} on session {}: sid={} is already registered", request, session);
+      throw new BadRequestException("sid=" + streamId + " is already registered");
     }
   }
 
   private void handleCancelRequest(
-      Long streamId,
-      WebsocketSession session,
-      GatewayMessage request,
-      FluxSink<GatewayMessage> sink) {
+      FluxSink<ByteBuf> sink, Long streamId, WebsocketSession session, GatewayMessage request) {
+
     if (!session.dispose(streamId)) {
-      LOGGER.error(
-          "CANCEL failed for gateway request: {}, " + "sid={} is not contained in session: {}",
-          request,
-          streamId,
-          session);
-      throw new BadRequestException("sid=" + streamId + " is not contained in session");
+      LOGGER.error("CANCEL gateway request {} failed in session {}", request, streamId, session);
+      throw new BadRequestException("Failed CANCEL request");
     }
-    // send message with CAMCEL signal
-    sink.next(GatewayMessage.builder().streamId(streamId).signal(Signal.CANCEL).build());
+
+    // release data, if for any reason client sent data inside CANCEL request
+    Optional.ofNullable(request.data()).ifPresent(ReferenceCountUtil::safestRelease);
+
+    // send ack message, if encoding throws here we're still safe
+    sink.next(toByteBuf(cancelResponse(streamId)));
     sink.complete();
   }
 
   private void checkSidNotNull(Long streamId, WebsocketSession session, GatewayMessage request) {
     if (streamId == null) {
-      LOGGER.error(
-          "Invalid gateway request: {}, " + "sid is missing for session: {}", request, session);
+      LOGGER.error("Bad gateway request {} on session {}: sid is missing", request, session);
       throw new BadRequestException("sid is missing");
     }
   }
 
-  private Mono<Void> onDisconnect(WebsocketSession session) {
-    LOGGER.info("Session disconnected: " + session);
-    return Mono.empty();
+  private ByteBuf toByteBuf(GatewayMessage message) {
+    return messageCodec.encode(message);
   }
 
-  private Mono<ByteBuf> toByteBuf(GatewayMessage message) {
+  private GatewayMessage toMessage(ByteBuf message) {
+    return messageCodec.decode(message);
+  }
+
+  private GatewayMessage toErrorMessage(Throwable t, Long streamId) {
+    return GatewayMessage.from(ExceptionProcessor.toMessage(t))
+        .streamId(streamId)
+        .signal(Signal.ERROR)
+        .build();
+  }
+
+  private GatewayMessage cancelResponse(Long streamId) {
+    return GatewayMessage.builder().streamId(streamId).signal(Signal.CANCEL).build();
+  }
+
+  private void handleError(
+      FluxSink<ByteBuf> sink, WebsocketSession session, Long sid, Throwable e) {
     try {
-      return Mono.just(messageCodec.encode(message));
-    } catch (Throwable ex) {
-      ReferenceCountUtil.safeRelease(message.data());
-      return Mono.empty();
+      sink.next(toByteBuf(toErrorMessage(e, sid)));
+      sink.complete();
+    } catch (Throwable t) {
+      LOGGER.error(
+          "Failed to send error message on session {}: on sid={}, muted cause={}",
+          sid,
+          session,
+          e,
+          t);
     }
   }
 
-  private GatewayMessage toGatewayMessage(WebSocketFrame frame) {
-    try {
-      return messageCodec.decode(frame.content());
-    } catch (Throwable ex) {
-      // we will release it in catch block of the onConnect
-      throw new BadRequestException(ex.getMessage());
-    }
+  private GatewayMessage enrichFromClient(GatewayMessage message) {
+    return GatewayMessage.from(message)
+        .header("gw-recv-from-client-time", System.currentTimeMillis())
+        .build();
   }
 
-  private GatewayMessage toErrorMessage(Throwable th, Long streamId) {
-    ServiceMessage serviceMessage = ExceptionProcessor.toMessage(th);
-    return GatewayMessage.from(serviceMessage).streamId(streamId).signal(Signal.ERROR).build();
+  private ServiceMessage enrichFromService(ServiceMessage message) {
+    return ServiceMessage.from(message)
+        .header("gw-recv-from-service-time", String.valueOf(System.currentTimeMillis()))
+        .build();
   }
 }
