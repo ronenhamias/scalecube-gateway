@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public final class RequestOneScenario {
 
@@ -28,7 +29,7 @@ public final class RequestOneScenario {
   public static void runWith(
       String[] args, Function<BenchmarkSettings, AbstractBenchmarkState<?>> benchmarkStateFactory) {
 
-    int numOfThreads = Runtime.getRuntime().availableProcessors() * 4;
+    int numOfThreads = Runtime.getRuntime().availableProcessors() * 2;
     Duration rampUpDuration = Duration.ofSeconds(numOfThreads);
 
     BenchmarkSettings settings =
@@ -49,7 +50,6 @@ public final class RequestOneScenario {
         state -> {
           BenchmarkTimer timer = state.timer("latency.timer");
           LatencyHelper latencyHelper = new LatencyHelper(state);
-
           ClientMessage request = ClientMessage.builder().qualifier(QUALIFIER).build();
 
           return client ->
@@ -57,17 +57,19 @@ public final class RequestOneScenario {
                   Mono.defer(
                       () -> {
                         Context timeContext = timer.time();
-
                         return client
-                            .requestResponse(request)
+                            .requestResponse(request, Schedulers.parallel())
                             .doOnNext(
-                                response -> {
-                                  Optional.ofNullable(response.data())
+                                msg -> {
+                                  Optional.ofNullable(msg.data())
                                       .ifPresent(ReferenceCountUtil::safestRelease);
-                                  timeContext.stop();
-                                  latencyHelper.calculate(response);
+                                  latencyHelper.calculate(msg);
                                 })
-                            .doOnTerminate(task::scheduleNow);
+                            .doOnTerminate(
+                                () -> {
+                                  timeContext.stop();
+                                  task.scheduler().schedule(task);
+                                });
                       });
         },
         (state, client) -> client.close());

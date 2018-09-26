@@ -10,6 +10,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.scalecube.gateway.GatewayMetrics;
 import io.scalecube.gateway.ReferenceCountUtil;
@@ -17,9 +18,9 @@ import io.scalecube.services.ServiceCall;
 import io.scalecube.services.api.ErrorData;
 import io.scalecube.services.api.Qualifier;
 import io.scalecube.services.api.ServiceMessage;
+import io.scalecube.services.api.ServiceMessage.Builder;
 import io.scalecube.services.codec.DataCodec;
 import io.scalecube.services.exceptions.ExceptionProcessor;
-import java.io.IOException;
 import java.util.Optional;
 import java.util.function.BiFunction;
 import org.reactivestreams.Publisher;
@@ -33,6 +34,11 @@ public class GatewayHttpAcceptor
     implements BiFunction<HttpServerRequest, HttpServerResponse, Publisher<Void>> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(GatewayHttpAcceptor.class);
+
+  private static final String SERVICE_RECV_TIME = "service-recv-time";
+  private static final String SERVICE_SEND_TIME = "service-send-time";
+  private static final String CLIENT_RECV_TIME = "client-recv-time";
+  private static final String CLIENT_SEND_TIME = "client-send-time";
 
   private final ServiceCall serviceCall;
   private final GatewayMetrics metrics;
@@ -68,17 +74,17 @@ public class GatewayHttpAcceptor
   private Mono<Void> handleRequest(
       ByteBuf content, HttpServerRequest httpRequest, HttpServerResponse httpResponse) {
 
-    ServiceMessage.Builder messageBuilder =
-        ServiceMessage.builder()
-            .header("gw-recv-from-client-time", String.valueOf(System.currentTimeMillis()))
-            .qualifier(httpRequest.uri());
+    String qualifier = httpRequest.uri();
+    Builder builder = ServiceMessage.builder().qualifier(qualifier).data(content);
+    enrichRequest(httpRequest.requestHeaders(), builder);
 
     return serviceCall
-        .requestOne(messageBuilder.data(content).build())
-        .switchIfEmpty(Mono.defer(() -> Mono.just(messageBuilder.data(null).build())))
+        .requestOne(builder.build())
+        .switchIfEmpty(
+            Mono.defer(() -> Mono.just(ServiceMessage.builder().qualifier(qualifier).build())))
         .flatMap(
             response -> {
-              enrichResponse(httpRequest, httpResponse, response);
+              enrichResponse(httpResponse, response);
               return Mono.defer(
                   () ->
                       ExceptionProcessor.isError(response) // check error
@@ -123,27 +129,40 @@ public class GatewayHttpAcceptor
 
     try {
       DataCodec.getInstance(dataFormat).encode(new ByteBufOutputStream(byteBuf), data);
-    } catch (IOException e) {
+    } catch (Throwable t) {
       ReferenceCountUtil.safestRelease(byteBuf);
-      LOGGER.error("Failed to encode data: {}", data, e);
+      LOGGER.error("Failed to encode data: {}", data, t);
       return Unpooled.EMPTY_BUFFER;
     }
 
     return byteBuf;
   }
 
-  private void enrichResponse(
-      HttpServerRequest httpRequest, HttpServerResponse httpResponse, ServiceMessage response) {
+  private void enrichRequest(HttpHeaders requestHeaders, Builder builder) {
+    Optional.ofNullable(requestHeaders.get(CLIENT_SEND_TIME))
+        .ifPresent(value -> builder.header(CLIENT_SEND_TIME, value));
 
-    Optional.ofNullable(httpRequest.requestHeaders().get("client-send-time"))
-        .ifPresent(s -> httpResponse.header("client-send-time", s));
+    Optional.ofNullable(requestHeaders.get(CLIENT_RECV_TIME))
+        .ifPresent(value -> builder.header(CLIENT_RECV_TIME, value));
 
-    Optional.ofNullable(response.header("service-recv-time"))
-        .ifPresent(s -> httpResponse.header("service-recv-time", s));
+    Optional.ofNullable(requestHeaders.get(SERVICE_RECV_TIME))
+        .ifPresent(value -> builder.header(SERVICE_RECV_TIME, value));
 
-    Optional.ofNullable(response.header("gw-recv-from-client-time"))
-        .ifPresent(s -> httpResponse.header("gw-recv-from-client-time", s));
+    Optional.ofNullable(requestHeaders.get(SERVICE_SEND_TIME))
+        .ifPresent(value -> builder.header(SERVICE_SEND_TIME, value));
+  }
 
-    httpResponse.header("gw-recv-from-service-time", String.valueOf(System.currentTimeMillis()));
+  private void enrichResponse(HttpServerResponse httpResponse, ServiceMessage response) {
+    Optional.ofNullable(response.header(CLIENT_SEND_TIME))
+        .ifPresent(value -> httpResponse.header(CLIENT_SEND_TIME, value));
+
+    Optional.ofNullable(response.header(CLIENT_RECV_TIME))
+        .ifPresent(value -> httpResponse.header(CLIENT_RECV_TIME, value));
+
+    Optional.ofNullable(response.header(SERVICE_RECV_TIME))
+        .ifPresent(value -> httpResponse.header(SERVICE_RECV_TIME, value));
+
+    Optional.ofNullable(response.header(SERVICE_SEND_TIME))
+        .ifPresent(value -> httpResponse.header(SERVICE_SEND_TIME, value));
   }
 }
