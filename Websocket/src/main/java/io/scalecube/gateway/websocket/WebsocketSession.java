@@ -3,19 +3,25 @@ package io.scalecube.gateway.websocket;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelFuture;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketFrame;
+import io.scalecube.gateway.websocket.message.GatewayMessage;
+import io.scalecube.gateway.websocket.message.GatewayMessageCodec;
+import io.scalecube.gateway.websocket.message.Signal;
+import io.scalecube.services.exceptions.ExceptionProcessor;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import org.reactivestreams.Publisher;
+import java.util.concurrent.Callable;
+import org.jctools.maps.NonBlockingHashMapLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.MonoSink;
 import reactor.ipc.netty.NettyPipeline.SendOptions;
 import reactor.ipc.netty.http.server.HttpServerRequest;
 import reactor.ipc.netty.http.websocket.WebsocketInbound;
@@ -25,13 +31,16 @@ public final class WebsocketSession {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WebsocketSession.class);
 
-  public static final String DEFAULT_CONTENT_TYPE = "application/json";
-  public static final int STATUS_CODE_NORMAL_CLOSE = 1000;
+  // close ws session normally status code
+  private static final int STATUS_CODE_CLOSE = 1000;
 
-  private final Map<Long, Disposable> subscriptions = new ConcurrentHashMap<>();
+  private static final String DEFAULT_CONTENT_TYPE = "application/json";
+
+  private final Map<Long, Disposable> subscriptions = new NonBlockingHashMapLong<>(1024);
 
   private final WebsocketInbound inbound;
   private final WebsocketOutbound outbound;
+  private final GatewayMessageCodec messageCodec;
 
   private final String id;
   private final String contentType;
@@ -39,12 +48,17 @@ public final class WebsocketSession {
   /**
    * Create a new websocket session with given handshake, inbound and outbound channels.
    *
+   * @param messageCodec - msg codec
    * @param httpRequest - Init session HTTP request
    * @param inbound - Websocket inbound
    * @param outbound - Websocket outbound
    */
   public WebsocketSession(
-      HttpServerRequest httpRequest, WebsocketInbound inbound, WebsocketOutbound outbound) {
+      GatewayMessageCodec messageCodec,
+      HttpServerRequest httpRequest,
+      WebsocketInbound inbound,
+      WebsocketOutbound outbound) {
+    this.messageCodec = messageCodec;
     this.id = Integer.toHexString(System.identityHashCode(this));
 
     HttpHeaders httpHeaders = httpRequest.requestHeaders();
@@ -71,19 +85,69 @@ public final class WebsocketSession {
    * @return flux websocket {@link ByteBuf}
    */
   public Flux<ByteBuf> receive() {
-    return inbound.aggregateFrames().receive().map(ByteBuf::retain).log(">> RECEIVE", Level.FINE);
+    return inbound.aggregateFrames().receive().retain();
   }
 
   /**
-   * Method for send replies which taken in a form of publisher of byte buffers.
+   * Method to send normal response.
    *
-   * @param publisher byte buf publisher
+   * @param response response
    * @return mono void
    */
-  public Mono<Void> send(Publisher<ByteBuf> publisher) {
-    return outbound
-        .sendObject(Flux.from(publisher).map(TextWebSocketFrame::new).log("<< SEND", Level.FINE))
-        .then();
+  public Mono<Void> send(GatewayMessage response) {
+    return send(Mono.just(response).map(messageCodec::encode))
+        .doOnSuccessOrError((avoid, th) -> logSend(response, th));
+  }
+
+  /**
+   * Method to send error response.
+   *
+   * @param err error
+   * @param sid stream id; optional
+   * @return mono void
+   */
+  public Mono<Void> send(Throwable err, Long sid) {
+    return send(Mono.just(err)
+            .map(ExceptionProcessor::toMessage)
+            .map(msg -> GatewayMessage.from(msg).streamId(sid).signal(Signal.ERROR).build())
+            .map(messageCodec::encode))
+        .doOnSuccessOrError((avoid, th) -> logSend(err, sid, th));
+  }
+
+  private Mono<Void> send(Mono<ByteBuf> publisher) {
+    return Mono.create(
+        sink ->
+            publisher
+                .map(TextWebSocketFrame::new)
+                .map(frame -> outbound.context().channel().writeAndFlush(frame))
+                .subscribe(future -> combine(sink, future), sink::error, sink::success));
+  }
+
+  private ChannelFuture combine(MonoSink<Void> sink, ChannelFuture channelFuture) {
+    return channelFuture.addListener(
+        future -> {
+          if (future.isSuccess()) {
+            sink.success();
+          } else {
+            sink.error(future.cause());
+          }
+        });
+  }
+
+  private void logSend(GatewayMessage response, Throwable th) {
+    if (th == null) {
+      LOGGER.debug("<< SEND success: {}, session={}", response, id);
+    } else {
+      LOGGER.warn("<< SEND failed: {}, session={}, cause: {}", response, id, th);
+    }
+  }
+
+  private void logSend(Throwable err, Long sid, Throwable th) {
+    if (th == null) {
+      LOGGER.debug("<< SEND success: {}, sid={}, session={}", err, sid, id);
+    } else {
+      LOGGER.warn("<< SEND failed: {}, sid={}, session={}, cause: {}", err, sid, id, th);
+    }
   }
 
   /**
@@ -95,10 +159,8 @@ public final class WebsocketSession {
    * @return mono void
    */
   public Mono<Void> close() {
-    return outbound
-        .sendObject(new CloseWebSocketFrame(STATUS_CODE_NORMAL_CLOSE, "close"))
-        .then()
-        .log("<< CLOSE", Level.FINE);
+    Callable<WebSocketFrame> callable = () -> new CloseWebSocketFrame(STATUS_CODE_CLOSE, "close");
+    return outbound.sendObject(Mono.fromCallable(callable)).then();
   }
 
   /**
@@ -106,8 +168,8 @@ public final class WebsocketSession {
    *
    * @param runnable lambda
    */
-  public void onClose(Runnable runnable) {
-    inbound.context().onClose(runnable);
+  public Mono<Void> onClose(Runnable runnable) {
+    return inbound.context().onClose(runnable).onClose();
   }
 
   /**
@@ -122,7 +184,7 @@ public final class WebsocketSession {
       Disposable disposable = subscriptions.remove(streamId);
       result = disposable != null;
       if (result) {
-        LOGGER.debug("Dispose subscription by sid: {} on session: {}", streamId, this);
+        LOGGER.debug("Dispose subscription by sid={}, session={}", streamId, id);
         disposable.dispose();
       }
     }
@@ -147,14 +209,16 @@ public final class WebsocketSession {
       result = subscriptions.putIfAbsent(streamId, disposable) == null;
     }
     if (result) {
-      LOGGER.debug("Registered subscription with sid: {} on session: {}", streamId, this);
+      LOGGER.debug("Registered subscription with sid={}, session={}", streamId, id);
     }
     return result;
   }
 
   private void clearSubscriptions() {
-    if (!subscriptions.isEmpty()) {
-      LOGGER.info("Clear all {} subscriptions on session: {}", subscriptions.size(), this);
+    if (subscriptions.size() > 1) {
+      LOGGER.info("Clear all {} subscriptions on session={}", subscriptions.size(), id);
+    } else if (subscriptions.size() == 1) {
+      LOGGER.info("Clear 1 subscription on session={}", id);
     }
     subscriptions.forEach((sid, disposable) -> disposable.dispose());
     subscriptions.clear();

@@ -7,7 +7,8 @@ import java.util.Map;
 
 public final class ClientMessage {
 
-  private static final String QUALIFIER = "q";
+  public static final String QUALIFIER = "q";
+
   private Map<String, String> headers;
   private Object data;
 
@@ -82,7 +83,7 @@ public final class ClientMessage {
   }
 
   public static class Builder {
-    private Map<String, String> headers = new HashMap<>();
+    private Map<String, String> headers = new HashMap<>(1);
     private Object data;
 
     private Builder() {}
@@ -130,7 +131,7 @@ public final class ClientMessage {
     }
 
     public Builder headers(Map<String, String> headers) {
-      this.headers.putAll(headers);
+      headers.forEach(this::header);
       return this;
     }
 

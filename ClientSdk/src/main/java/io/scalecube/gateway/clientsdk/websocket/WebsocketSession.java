@@ -9,12 +9,11 @@ import io.scalecube.gateway.clientsdk.ClientMessage;
 import io.scalecube.gateway.clientsdk.ErrorData;
 import io.scalecube.gateway.clientsdk.ReferenceCountUtil;
 import io.scalecube.gateway.clientsdk.exceptions.ExceptionProcessor;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import org.jctools.maps.NonBlockingHashMap;
+import org.jctools.maps.NonBlockingHashMapLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -41,8 +40,8 @@ final class WebsocketSession {
   private final WebsocketOutbound outbound;
 
   // processor by sid mapping
-  private final ConcurrentMap<Long, UnicastProcessor<ClientMessage>> inboundProcessors =
-      new NonBlockingHashMap<>();
+  private final Map<Long, UnicastProcessor<ClientMessage>> inboundProcessors =
+      new NonBlockingHashMapLong<>(1024);
 
   WebsocketSession(
       ClientCodec<ByteBuf> codec, WebsocketInbound inbound, WebsocketOutbound outbound) {
@@ -55,10 +54,15 @@ final class WebsocketSession {
         .aggregateFrames()
         .receive()
         .retain()
-        .map(codec::decode)
-        .log(">>> RECEIVE", Level.FINE)
         .subscribe(
-            msg -> {
+            byteBuf -> {
+              // decode msg
+              ClientMessage msg;
+              try {
+                msg = codec.decode(byteBuf);
+              } catch (Exception ex) {
+                return;
+              }
               // ignore msgs w/o sid
               if (!msg.hasHeader(STREAM_ID)) {
                 LOGGER.error("Ignore response: {} with null sid, session={}", msg, id);
@@ -80,10 +84,9 @@ final class WebsocketSession {
   }
 
   public Mono<Void> send(ByteBuf byteBuf, long sid) {
+    Callable<WebSocketFrame> callable = () -> new TextWebSocketFrame(byteBuf);
     return outbound
-        .sendObject(
-            Mono.<WebSocketFrame>fromCallable(() -> new TextWebSocketFrame(byteBuf))
-                .log("<<< SEND", Level.FINE))
+        .sendObject(Mono.fromCallable(callable))
         .then()
         .doOnSuccess(
             avoid -> {
@@ -112,7 +115,7 @@ final class WebsocketSession {
 
   public Mono<Void> close() {
     Callable<WebSocketFrame> callable = () -> new CloseWebSocketFrame(STATUS_CODE_CLOSE, "close");
-    return outbound.sendObject(Mono.fromCallable(callable).log("<<< CLOSE", Level.FINE)).then();
+    return outbound.sendObject(Mono.fromCallable(callable)).then();
   }
 
   public Mono<Void> onClose(Runnable runnable) {
@@ -124,6 +127,9 @@ final class WebsocketSession {
       Consumer<ClientMessage> onNext,
       Consumer<Throwable> onError,
       Runnable onComplete) {
+
+    LOGGER.debug("Handle response: {}, session={}", response, id);
+
     try {
       Optional<Signal> signalOptional =
           Optional.ofNullable(response.header(SIGNAL)).map(Signal::from);
