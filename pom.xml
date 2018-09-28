@@ -52,6 +52,7 @@
     <module>Benchmarks</module>
     <module>GatewayCommon</module>
     <module>ExamplesRunner</module>
+    <module>GatewayServiceRunner</module>
   </modules>
 
   <dependencies>
