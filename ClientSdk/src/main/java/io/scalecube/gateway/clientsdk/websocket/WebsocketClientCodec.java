@@ -42,6 +42,7 @@ public final class WebsocketClientCodec implements ClientCodec<ByteBuf> {
   private static final String DATA_FIELD = "d";
 
   private final DataCodec dataCodec;
+  private final boolean releaseDataOnEncode;
 
   /**
    * Constructor for codec which encode/decode client message to/from websocket gateway message
@@ -50,7 +51,19 @@ public final class WebsocketClientCodec implements ClientCodec<ByteBuf> {
    * @param dataCodec data message codec.
    */
   public WebsocketClientCodec(DataCodec dataCodec) {
+    this(dataCodec, true /*always release by default*/);
+  }
+
+  /**
+   * Constructor for codec which encode/decode client message to/from websocket gateway message
+   * represented by json and transformed in {@link ByteBuf}.
+   *
+   * @param dataCodec data message codec.
+   * @param releaseDataOnEncode release data on encode flag.
+   */
+  public WebsocketClientCodec(DataCodec dataCodec, boolean releaseDataOnEncode) {
     this.dataCodec = dataCodec;
+    this.releaseDataOnEncode = releaseDataOnEncode; // always release by default
   }
 
   @Override
@@ -78,6 +91,7 @@ public final class WebsocketClientCodec implements ClientCodec<ByteBuf> {
         }
       }
 
+      // data
       Object data = message.data();
       if (data != null) {
         if (data instanceof ByteBuf) {
@@ -89,7 +103,9 @@ public final class WebsocketClientCodec implements ClientCodec<ByteBuf> {
               generator.flush();
               byteBuf.writeBytes(dataBin);
             } finally {
-              ReferenceCountUtil.safestRelease(dataBin);
+              if (releaseDataOnEncode) {
+                ReferenceCountUtil.safestRelease(dataBin);
+              }
             }
           }
         } else {
@@ -139,9 +155,11 @@ public final class WebsocketClientCodec implements ClientCodec<ByteBuf> {
           }
           dataEnd = jp.getCurrentLocation().getByteOffset();
         } else {
+          // headers
           result.header(fieldName, jp.getValueAsString());
         }
       }
+      // data
       if (dataEnd > dataStart) {
         result.data(encodedMessage.copy((int) dataStart, (int) (dataEnd - dataStart)));
       }
