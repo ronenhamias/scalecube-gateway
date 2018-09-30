@@ -82,6 +82,9 @@ public class GatewayWebsocketAcceptor
 
     Flux<ServiceMessage> serviceStream =
         serviceCall.requestMany(GatewayMessage.toServiceMessage(request));
+    if (request.rateLimit() != null) {
+      serviceStream = serviceStream.limitRate(request.rateLimit());
+    }
 
     Disposable disposable =
         serviceStream
